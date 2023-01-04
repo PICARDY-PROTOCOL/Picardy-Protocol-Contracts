@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import {IRoyaltyAdapter} from "../Chainlink/royaltyAdapter.sol";
 import {ITokenRoyaltySaleFactory} from "../Factory/TokenRoyaltySaleFactory.sol";
 
-contract TokenRoyaltySale is Ownable, AutomationCompatibleInterface, ReentrancyGuard, Pausable {
+contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pausable {
 
     error OnlyKeeperRegistry();
 
@@ -41,6 +41,7 @@ contract TokenRoyaltySale is Ownable, AutomationCompatibleInterface, ReentrancyG
 
     Royalty royalty;
 
+    address public owner;
     address private keeperRegistryAddress;
     address private royaltyAdapter;
     uint256 lastRoyaltyUpdate;
@@ -52,6 +53,11 @@ contract TokenRoyaltySale is Ownable, AutomationCompatibleInterface, ReentrancyG
     mapping (address => uint) royaltyBalance;
     mapping (address => bool) isPoolMember;
     mapping (address => uint) memberSize;
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner can call this function.");
+        _;
+    }
 
     modifier onlyKeeperRegistry() {
         if (msg.sender != keeperRegistryAddress) {
@@ -68,7 +74,7 @@ contract TokenRoyaltySale is Ownable, AutomationCompatibleInterface, ReentrancyG
         royalty.creator = _creator;
         royalty.creatorsName = _creatorsName;
         royalty.name = _name;
-        transferOwnership(_creator);
+        owner = _creator;
         _CPToken();
     }
     // constructor (uint _royaltyPoolSize, uint _percentage, address _tokenRoyaltyFactory, address _creator, string memory _creatorsName, string memory _name){
@@ -107,7 +113,7 @@ contract TokenRoyaltySale is Ownable, AutomationCompatibleInterface, ReentrancyG
 
     function buyRoyalty() external payable {
         require(tokenRoyaltyState == TokenRoyaltyState.OPEN, "Sale closed");
-        require(isPoolMember[_msgSender()] == false);
+        require(isPoolMember[msg.sender] == false);
         require(msg.value <=  royalty.royaltyPoolSize);
         royalty.royaltyPoolBalance += msg.value;
         _buyRoyalty(msg.value);
@@ -178,7 +184,7 @@ contract TokenRoyaltySale is Ownable, AutomationCompatibleInterface, ReentrancyG
         uint balance = royalty.royaltyPoolBalance;
         uint txFee = (balance * royaltyPercentage) / 100;
         uint toWithdraw = balance - txFee;
-        address _owner = payable(owner());
+        address _owner = payable(owner);
         (bool hs, ) = payable(royaltyAddress).call{value: txFee}("");
         (bool os, ) = _owner.call{value: toWithdraw}("");
         require(hs);

@@ -22,6 +22,23 @@ async function main() {
   const oracleAddress = "0x7E0ffaca8352CbB93c099C08b9aD7B4bE9f790Ec";
   //Import comtracts
   const PicardyHub = await hre.ethers.getContractFactory("PicardyHub");
+
+  const NftRoyaltySaleImpl = await hre.ethers.getContractFactory(
+    "NftRoyaltySale"
+  );
+
+  const TokenRoyaltySaleImpl = await hre.ethers.getContractFactory(
+    "TokenRoyaltySale"
+  );
+
+  const NftRoyaltyAdapterImp = await hre.ethers.getContractFactory(
+    "RoyaltyAdapter"
+  );
+
+  const TokenRoyaltyAdapterImp = await hre.ethers.getContractFactory(
+    "TokenRoyaltyAdapter"
+  );
+
   const PicardyVaultFactory = await hre.ethers.getContractFactory(
     "PicardyVaultFactory"
   );
@@ -45,6 +62,24 @@ async function main() {
     "TimelockFactory"
   );
 
+  //Deploy Implimentation contracts
+
+  const nftRoyaltyImp = await NftRoyaltySaleImpl.deploy();
+  await nftRoyaltyImp.deployed();
+  const nftRoyaltyImpAddress = nftRoyaltyImp.address;
+
+  const tokenRoyaltyImp = await TokenRoyaltySaleImpl.deploy();
+  await tokenRoyaltyImp.deployed();
+  const tokenRoyaltyImpAddress = tokenRoyaltyImp.address;
+
+  const nftRoyaltyAdapterImp = await NftRoyaltyAdapterImp.deploy();
+  await nftRoyaltyAdapterImp.deployed();
+  const nftRoyaltyAdapterImpAddr = nftRoyaltyAdapterImp.address;
+
+  const tokenRoyaltyAdapterImp = await TokenRoyaltyAdapterImp.deploy();
+  await tokenRoyaltyAdapterImp.deployed();
+  const tokenRoyaltyAdapterImpAddr = tokenRoyaltyAdapterImp.address;
+
   //Deploy contracts
 
   const picardyHub = await PicardyHub.deploy();
@@ -65,14 +100,16 @@ async function main() {
 
   const nftRoyaltySaleFactory = await NftRoyaltySaleFactory.deploy(
     picardyHubAddress,
-    linkToken
+    linkToken,
+    nftRoyaltyImpAddress
   );
   await nftRoyaltySaleFactory.deployed();
   const nftRoyaltySaleFactoryAddress = nftRoyaltySaleFactory.address;
 
   const tokenRoyaltySaleFactory = await TokenRoyaltySaleFactory.deploy(
     picardyHubAddress,
-    linkToken
+    linkToken,
+    tokenRoyaltyImpAddress
   );
   await tokenRoyaltySaleFactory.deployed();
   const tokenRoyaltySaleFactoryAddress = tokenRoyaltySaleFactory.address;
@@ -85,7 +122,9 @@ async function main() {
     picardyHubAddress,
     linkToken,
     oracleAddress,
-    jobId
+    jobId,
+    nftRoyaltyAdapterImpAddr,
+    tokenRoyaltyAdapterImpAddr
   );
   await royaltyAdapterFactory.deployed();
   const royaltyAdapterFactoryAddress = royaltyAdapterFactory.address;
@@ -115,6 +154,13 @@ async function main() {
     daoFactory: daoFactoryAddress,
     timelockFactory: timelockFactoryAddress,
     royaltyAdapterFactory: royaltyAdapterFactoryAddress,
+
+    implimentations: {
+      nftRoyaltySale: nftRoyaltyAdapterImpAddr,
+      tokenRoyaltySale: tokenRoyaltyAdapterImpAddr,
+      nftRoyaltyAdapter: nftRoyaltyAdapterImpAddr,
+      tokenRoyaltyAdapter: tokenRoyaltyAdapterImpAddr,
+    },
   };
 
   addresses = JSON.stringify(deployedAddress);
@@ -130,6 +176,10 @@ async function main() {
     daoFactory: daoFactoryAddress,
     timelockFactory: timelockFactoryAddress,
     royaltyAdapterFactory: royaltyAdapterFactoryAddress,
+    nftRoyaltySaleImp: nftRoyaltyAdapterImpAddr,
+    tokenRoyaltySaleImp: tokenRoyaltyAdapterImpAddr,
+    nftRoyaltyAdapterImp: nftRoyaltyAdapterImpAddr,
+    tokenRoyaltyAdapterImp: tokenRoyaltyAdapterImpAddr,
   });
 }
 

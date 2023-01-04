@@ -10,7 +10,7 @@ describe("NftRoyaltySaleFactory", function () {
   const percentage = 10;
   const name = "testToken";
   const symbol = "TST";
-  const baseURI = "https://test.com/";
+  const initBaseURI = "https://test.com/";
   const artisteName = "testArtiste";
   //const linkToken = "0x326C977E6efc84E512bB9C30f76E30c160eD06FB";
 
@@ -18,6 +18,19 @@ describe("NftRoyaltySaleFactory", function () {
   let nftRoyaltySaleFactory;
   let linkToken;
   let tokenContract;
+  let nftRoyaltyImpAddress;
+
+  let details = {
+    maxSupply: maxSupply,
+    maxMintAmount: maxMintAmount,
+    cost: cost,
+    percentage: percentage,
+    name: name,
+    symbol: symbol,
+    initBaseURI: initBaseURI,
+    artisteName: artisteName,
+  };
+
   beforeEach(async () => {
     const LinkToken = await ethers.getContractFactory("MocLink");
     tokenContract = await LinkToken.deploy();
@@ -26,12 +39,21 @@ describe("NftRoyaltySaleFactory", function () {
     const PicardyHub = await ethers.getContractFactory("PicardyHub");
     picardyHub = await PicardyHub.deploy();
 
+    const NftRoyaltySaleImpl = await hre.ethers.getContractFactory(
+      "NftRoyaltySale"
+    );
+
+    const nftRoyaltyImp = await NftRoyaltySaleImpl.deploy();
+    await nftRoyaltyImp.deployed();
+    nftRoyaltyImpAddress = nftRoyaltyImp.address;
+
     const NftRoyaltySaleFactory = await ethers.getContractFactory(
       "NftRoyaltySaleFactory"
     );
     nftRoyaltySaleFactory = await NftRoyaltySaleFactory.deploy(
       picardyHub.address,
-      linkToken
+      linkToken,
+      nftRoyaltyImpAddress
     );
   });
 
@@ -40,16 +62,7 @@ describe("NftRoyaltySaleFactory", function () {
     let eventIndex;
     const tx = await nftRoyaltySaleFactory
       .connect(user)
-      .createNftRoyalty(
-        maxSupply,
-        maxMintAmount,
-        cost,
-        percentage,
-        name,
-        symbol,
-        baseURI,
-        artisteName
-      );
+      .createNftRoyalty(details);
     const nftRoyaltySaleAddress = await nftRoyaltySaleFactory
       .connect(user)
       .getNftRoyaltySaleAddress(artisteName, name);

@@ -11,6 +11,7 @@ describe("TokenRoyaltySaleFactory", function () {
 
   let picardyHub;
   let tokenRoyaltySaleFactory;
+  let tokenRoyaltyImpAddress;
   const linkToken = "0x326C977E6efc84E512bB9C30f76E30c160eD06FB";
 
   beforeEach(async () => {
@@ -20,9 +21,19 @@ describe("TokenRoyaltySaleFactory", function () {
     const TokenRoyaltySaleFactory = await ethers.getContractFactory(
       "TokenRoyaltySaleFactory"
     );
+
+    const TokenRoyaltySaleImpl = await hre.ethers.getContractFactory(
+      "TokenRoyaltySale"
+    );
+
+    const tokenRoyaltyImp = await TokenRoyaltySaleImpl.deploy();
+    await tokenRoyaltyImp.deployed();
+    tokenRoyaltyImpAddress = tokenRoyaltyImp.address;
+
     tokenRoyaltySaleFactory = await TokenRoyaltySaleFactory.deploy(
       picardyHub.address,
-      linkToken
+      linkToken,
+      tokenRoyaltyImpAddress
     );
 
     //deploy mocLink

@@ -62,20 +62,14 @@ contract NftRoyaltySaleFactory is Context {
         require(details.percentage <= 50, "Royalty percentage cannot be more than 50%");
         uint newRId = nftRoyaltyId;
         bytes32 salt = keccak256(abi.encodePacked(newRId, block.number, block.timestamp));
-        address nftRoyalty = payable(Clones.cloneDeterministic(nftRoyaltySaleImplementation, salt));
-        bytes memory data = abi.encode(details.maxSupply, details.maxMintAmount, details.cost,  details.percentage , details.name, details.symbol, details.initBaseURI, details.artisteName, _msgSender(), address(this));
-        initilizeRoyaltySale(data);
+        address payable nftRoyalty = payable(Clones.cloneDeterministic(nftRoyaltySaleImplementation, salt));
+        NftRoyaltySale(nftRoyalty).initilize(details.maxSupply, details.maxMintAmount, details.cost,  details.percentage , details.name, details.symbol, details.initBaseURI, details.artisteName, _msgSender(), address(this));
         NftRoyaltyDetails memory newNftRoyaltyDetails = NftRoyaltyDetails(newRId, details.percentage, details.name, nftRoyalty);
         royaltySaleAddress[details.artisteName][details.name] = nftRoyalty;
         nftRoyaltyDetails[nftRoyalty] = newNftRoyaltyDetails;
         nftRoyaltyId++;
         emit NftRoyaltySaleCreated(newRId,_msgSender(), nftRoyalty);
         return (nftRoyalty);
-    }
-
-    function initilizeRoyaltySale(bytes memory data) internal {
-        (uint _maxSupply, uint _maxMintAmount, uint _cost, uint _percentage, string memory _name, string memory _symbol, string memory _initBaseURI, string memory _artisteName, address _creator, address _factory, address payable _nftRoyaltySale) = abi.decode(data, (uint, uint, uint, uint, string, string, string, string, address, address, address));
-        NftRoyaltySale(_nftRoyaltySale).initilize(_maxSupply, _maxMintAmount, _cost,  _percentage ,_name, _symbol, _initBaseURI, _artisteName, _creator, _factory);
     }
 
     function updateRoyaltyDetails(uint _royaltyPercentage) external {

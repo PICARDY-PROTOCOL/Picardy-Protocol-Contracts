@@ -38,7 +38,7 @@ contract RoyaltyAdapterFactory is Context{
         _;
     }
 
-    constructor (address _picardyHub, address _linkToken, address _oracle, address _nftRoyaltyAdapterImp, address _tokenRoyaltyAdapterImpl, string memory _jobId){
+    constructor (address _picardyHub, address _linkToken, address _oracle, string memory _jobId, address _nftRoyaltyAdapterImp, address _tokenRoyaltyAdapterImpl){
         picardyHub = _picardyHub;
         linkToken = _linkToken;
         oracle = _oracle;

@@ -12,7 +12,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.s
 import {IRoyaltyAdapter} from "../Chainlink/royaltyAdapter.sol";
 import {INftRoyaltySaleFactory} from "../Factory/NftRoyaltySaleFactory.sol";
 
-contract NftRoyaltySale is Ownable, ReentrancyGuard, Pausable, AutomationCompatibleInterface {
+contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterface {
 
 
     error OnlyKeeperRegistry();
@@ -47,6 +47,7 @@ contract NftRoyaltySale is Ownable, ReentrancyGuard, Pausable, AutomationCompati
 
     Royalty royalty;
     
+    address public owner;
     address public nftRoyaltyAddress;
     address private keeperRegistryAddress;
     address private royaltyAdapter;
@@ -66,6 +67,11 @@ contract NftRoyaltySale is Ownable, ReentrancyGuard, Pausable, AutomationCompati
         }
         _;
     }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner can call this function.");
+        _;
+    }
     
     function initilize(uint _maxSupply, 
         uint _maxMintAmount, 
@@ -80,7 +86,7 @@ contract NftRoyaltySale is Ownable, ReentrancyGuard, Pausable, AutomationCompati
             require(!initialized, "already initialized");
             Royalty memory newRoyalty = Royalty(_maxMintAmount, _maxSupply, _cost, _percentage, _artistName, _name, _initBaseURI, _symbol, _creator, _factroyAddress);
             royalty = newRoyalty;
-            transferOwnership(_creator);
+            owner = _creator;
             nftRoyaltyState = NftRoyaltyState.CLOSED;
             initialized = true;
         }

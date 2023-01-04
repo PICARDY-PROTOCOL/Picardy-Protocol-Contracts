@@ -12,7 +12,7 @@ describe("NftRoyaltySale", function () {
   const percentage = 10;
   const name = "testToken";
   const symbol = "TST";
-  const baseURI = "https://test.com/";
+  const initBaseURI = "https://test.com/";
   const artisteName = "testArtiste";
   let linkToken;
 
@@ -21,6 +21,18 @@ describe("NftRoyaltySale", function () {
   let nftRoyaltySaleAddress;
   let nftRoyaltySale;
   let tokenContract;
+  let nftRoyaltyImpAddress;
+
+  let details = {
+    maxSupply: maxSupply,
+    maxMintAmount: maxMintAmount,
+    cost: formatedCost,
+    percentage: percentage,
+    name: name,
+    symbol: symbol,
+    initBaseURI: initBaseURI,
+    artisteName: artisteName,
+  };
 
   beforeEach(async () => {
     const [hubAdmin, royaltyAddress, user1, user2, user3] =
@@ -33,26 +45,27 @@ describe("NftRoyaltySale", function () {
     const PicardyHub = await ethers.getContractFactory("PicardyHub");
     picardyHub = await PicardyHub.deploy();
 
+    const NftRoyaltySaleImpl = await hre.ethers.getContractFactory(
+      "NftRoyaltySale"
+    );
+
+    const nftRoyaltyImp = await NftRoyaltySaleImpl.deploy();
+    await nftRoyaltyImp.deployed();
+    nftRoyaltyImpAddress = nftRoyaltyImp.address;
+
     const NftRoyaltySaleFactory = await ethers.getContractFactory(
       "NftRoyaltySaleFactory"
     );
+
     nftRoyaltySaleFactory = await NftRoyaltySaleFactory.deploy(
       picardyHub.address,
-      linkToken
+      linkToken,
+      nftRoyaltyImpAddress
     );
 
     const tx = await nftRoyaltySaleFactory
       .connect(user1)
-      .createNftRoyalty(
-        maxSupply,
-        maxMintAmount,
-        formatedCost,
-        percentage,
-        name,
-        symbol,
-        baseURI,
-        artisteName
-      );
+      .createNftRoyalty(details);
 
     nftRoyaltySaleAddress =
       await nftRoyaltySaleFactory.getNftRoyaltySaleAddress(artisteName, name);
@@ -294,7 +307,7 @@ describe("PicardyNftBase", function () {
   const percentage = 10;
   const name = "testToken";
   const symbol = "TST";
-  const baseURI = "https://test.com/";
+  const initBaseURI = "https://test.com/";
   const artisteName = "testArtiste";
   let linkToken;
 
@@ -305,6 +318,18 @@ describe("PicardyNftBase", function () {
   let tokenContract;
   let nftRoyaltyAddress;
   let nftBase;
+  let nftRoyaltyImpAddress;
+
+  let details = {
+    maxSupply: maxSupply,
+    maxMintAmount: maxMintAmount,
+    cost: formatedCost,
+    percentage: percentage,
+    name: name,
+    symbol: symbol,
+    initBaseURI: initBaseURI,
+    artisteName: artisteName,
+  };
 
   beforeEach(async () => {
     const [hubAdmin, royaltyAddress, user1, user2, user3] =
@@ -317,26 +342,26 @@ describe("PicardyNftBase", function () {
     const PicardyHub = await ethers.getContractFactory("PicardyHub");
     picardyHub = await PicardyHub.deploy();
 
+    const NftRoyaltySaleImpl = await hre.ethers.getContractFactory(
+      "NftRoyaltySale"
+    );
+
+    const nftRoyaltyImp = await NftRoyaltySaleImpl.deploy();
+    await nftRoyaltyImp.deployed();
+    nftRoyaltyImpAddress = nftRoyaltyImp.address;
+
     const NftRoyaltySaleFactory = await ethers.getContractFactory(
       "NftRoyaltySaleFactory"
     );
     nftRoyaltySaleFactory = await NftRoyaltySaleFactory.deploy(
       picardyHub.address,
-      linkToken
+      linkToken,
+      nftRoyaltyImpAddress
     );
 
     const tx = await nftRoyaltySaleFactory
       .connect(user1)
-      .createNftRoyalty(
-        maxSupply,
-        maxMintAmount,
-        formatedCost,
-        percentage,
-        name,
-        symbol,
-        baseURI,
-        artisteName
-      );
+      .createNftRoyalty(details);
 
     nftRoyaltySaleAddress =
       await nftRoyaltySaleFactory.getNftRoyaltySaleAddress(artisteName, name);
@@ -375,16 +400,16 @@ describe("PicardyNftBase", function () {
       nftBase.connect(user2).setMaxMintAmount(maxMintAmount)
     ).to.be.rejectedWith(Error);
 
-    await expect(nftBase.connect(user2).setBaseURI(baseURI)).to.be.rejectedWith(
-      Error
-    );
+    await expect(
+      nftBase.connect(user2).setBaseURI(initBaseURI)
+    ).to.be.rejectedWith(Error);
 
     await expect(
       nftBase.connect(user2).setBaseExtension(".json")
     ).to.be.rejectedWith(Error);
 
     await nftBase.setMaxMintAmount(maxMintAmount);
-    await nftBase.setBaseURI(baseURI);
+    await nftBase.setBaseURI(initBaseURI);
     await nftBase.setBaseExtension(".json");
   });
   //it: onlyowner can withdraw

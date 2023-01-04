@@ -16,6 +16,7 @@ describe("TokenRoyaltyTest", function () {
   let tokenRoyaltyFactory;
   let tokenRoyaltySale;
   let linkToken;
+  let tokenRoyaltyImpAddress;
 
   beforeEach(async () => {
     const [hubAdmin, royaltyAddress, user1, user2, user3] =
@@ -30,9 +31,19 @@ describe("TokenRoyaltyTest", function () {
     const TokenRoyaltySaleFactory = await ethers.getContractFactory(
       "TokenRoyaltySaleFactory"
     );
+
+    const TokenRoyaltySaleImpl = await hre.ethers.getContractFactory(
+      "TokenRoyaltySale"
+    );
+
+    const tokenRoyaltyImp = await TokenRoyaltySaleImpl.deploy();
+    await tokenRoyaltyImp.deployed();
+    tokenRoyaltyImpAddress = tokenRoyaltyImp.address;
+
     tokenRoyaltyFactory = await TokenRoyaltySaleFactory.deploy(
       picardyHub.address,
-      linkToken.address
+      linkToken.address,
+      tokenRoyaltyImpAddress
     );
 
     await tokenRoyaltyFactory
