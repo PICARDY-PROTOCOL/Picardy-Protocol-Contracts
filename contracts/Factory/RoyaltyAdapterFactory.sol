@@ -14,6 +14,8 @@ import "../Chainlink/tokenRoyaltyAdapter.sol";
 
 contract RoyaltyAdapterFactory is Context{
 
+    event AdapterCreated(address indexed adapterAddress, uint indexed adapterId);
+
     address nftRoyaltyAdapterImplimentation;
     address tokenRoyaltyAdapterImplimentation;
     
@@ -47,34 +49,32 @@ contract RoyaltyAdapterFactory is Context{
         jobId = _jobId;
     }
 
-    function createAdapter(address _royaltySaleAddress, uint royaltyType) external returns(address _royaltyAddress, uint256 n_adapterId){
+    function createAdapter(address _royaltySaleAddress, uint royaltyType) external returns(address, uint256){
          uint256 _adapterId = adapterId;
         
         if (royaltyType == 0){
         require(adapterExixt[_royaltySaleAddress] == false, "Adapter Already exist");
         bytes32 salt = keccak256(abi.encodePacked(_royaltySaleAddress, block.number, block.timestamp));
-        address n_royaltyAddress = Clones.cloneDeterministic(nftRoyaltyAdapterImplimentation, salt);
-        RoyaltyAdapter(n_royaltyAddress).initilize(linkToken, oracle, jobId, _royaltySaleAddress, msg.sender);
-        AdapterDetails memory n_adapterDetails = AdapterDetails({adapterAddress: n_royaltyAddress, adapterId: _adapterId});
+        address payable n_royaltyAdapter = payable(Clones.cloneDeterministic(nftRoyaltyAdapterImplimentation, salt));
+        RoyaltyAdapter(n_royaltyAdapter).initilize(linkToken, oracle, jobId, _royaltySaleAddress, msg.sender);
+        AdapterDetails memory n_adapterDetails = AdapterDetails({adapterAddress: n_royaltyAdapter, adapterId: _adapterId});
         adapterDetails[_royaltySaleAddress] = n_adapterDetails;
         adapterId++;
         adapterExixt[_royaltySaleAddress] = true;
-        n_adapterId = _adapterId;
-        _royaltyAddress = n_royaltyAddress;
-        return(_royaltyAddress, n_adapterId);
+        emit AdapterCreated(n_royaltyAdapter, _adapterId);
+        return(n_royaltyAdapter, _adapterId);
         } else if(royaltyType == 1){
         
         require(adapterExixt[_royaltySaleAddress] == false, "Adapter Already exist");
         bytes32 salt = keccak256(abi.encodePacked(_royaltySaleAddress, block.number, block.timestamp));
-        address n_royaltyAddress = Clones.cloneDeterministic(tokenRoyaltyAdapterImplimentation, salt);
-        TokenRoyaltyAdapter(n_royaltyAddress).initilize(linkToken, oracle, jobId, _royaltySaleAddress, msg.sender);
-        AdapterDetails memory n_adapterDetails = AdapterDetails({adapterAddress:n_royaltyAddress, adapterId: _adapterId});
+        address payable n_royaltyAdapter = payable(Clones.cloneDeterministic(tokenRoyaltyAdapterImplimentation, salt));
+        TokenRoyaltyAdapter(n_royaltyAdapter).initilize(linkToken, oracle, jobId, _royaltySaleAddress, msg.sender);
+        AdapterDetails memory n_adapterDetails = AdapterDetails({adapterAddress:n_royaltyAdapter, adapterId: _adapterId});
         adapterDetails[_royaltySaleAddress] = n_adapterDetails;
         adapterId++;
         adapterExixt[_royaltySaleAddress] = true;
-        n_adapterId = _adapterId;
-        _royaltyAddress = n_royaltyAddress;
-        return(_royaltyAddress, n_adapterId);
+        emit AdapterCreated(n_royaltyAdapter, _adapterId);
+        return(n_royaltyAdapter, _adapterId);
         }
         
     }
@@ -95,9 +95,7 @@ contract RoyaltyAdapterFactory is Context{
         require(IPicardyHub(picardyHub).checkHubAdmin(_msgSender()), "Not Hub Admin");
     }
 
-    function getAdapterDetails(address _royaltySaleAddress) external view returns(address, uint){
-       address _adapterAddress = adapterDetails[_royaltySaleAddress].adapterAddress;
-       uint256 _adapterId = adapterDetails[_royaltySaleAddress].adapterId;
-       return (_adapterAddress, _adapterId);
+    function getAdapterDetails(address _royaltySaleAddress) external view returns(AdapterDetails memory _adapterDetails){
+        return adapterDetails[_royaltySaleAddress];
     }
 }

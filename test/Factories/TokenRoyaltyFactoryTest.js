@@ -56,7 +56,7 @@ describe("TokenRoyaltySaleFactory", function () {
       events.push(item.event);
     }
 
-    eventIndex = events.length - 1;
+    let eventIndex = events.length - 1;
     expect(events).to.include("TokenRoyaltyCreated");
 
     assert.equal(await receipt.events[eventIndex].args.creator, user.address);

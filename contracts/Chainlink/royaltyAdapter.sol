@@ -3,11 +3,10 @@ pragma solidity ^0.8.7;
 
 import "@chainlink/contracts/src/v0.8/ChainlinkClient.sol";
 //import "@chainlink/contracts/src/v0.8/ConfirmedOwner.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IPicardyNftRoyaltySale} from "../Products/NftRoyaltySale.sol";
 
-contract RoyaltyAdapter is ChainlinkClient, Ownable {
+contract RoyaltyAdapter is ChainlinkClient {
     using Chainlink for Chainlink.Request;
 
     event RoyaltyData(bytes32 indexed requestId, uint indexed value);
@@ -15,10 +14,16 @@ contract RoyaltyAdapter is ChainlinkClient, Ownable {
     uint256 private constant ORACLE_PAYMENT = 1 * LINK_DIVISIBILITY; // 1 * 10**18
     string public lastRetrievedInfo;
 
+    address public owner;
     address public oracle;
     string public jobId;
     address public royaltySaleAddress;
     bool public initialized;
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "royalty adapter: Un-Auth");
+        _;
+    }
 
     function initilize(address _linkToken, address _oracle, string memory _jobId, address _royaltySaleAddress, address _owner) public {
         require(!initialized, "Already initialized!");
@@ -27,7 +32,7 @@ contract RoyaltyAdapter is ChainlinkClient, Ownable {
         jobId = _jobId;
         oracle = _oracle;
         setChainlinkToken(_linkToken);
-        transferOwnership(_owner);
+        owner = _owner;
         initialized = true;
         // Link Mumbai 0x326C977E6efc84E512bB9C30f76E30c160eD06FB
     }
@@ -124,6 +129,10 @@ contract RoyaltyAdapter is ChainlinkClient, Ownable {
             // solhint-disable-line no-inline-assembly
             result := mload(add(source, 32))
         }
+    }
+
+    receive() external payable {
+      
     }
 }
 
