@@ -15,7 +15,8 @@ contract PicardyArtisteToken is ERC20, Ownable {
         maxSupply = _maxSupply;
         factory = _factory;
         cost = _cost;
-        transferOwnership(_creator);
+        transferOwnership(_creator); 
+        
     }
 
     function mint(uint _amount, address _to) external payable {
