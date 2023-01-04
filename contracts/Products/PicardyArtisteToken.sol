@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import {IArtisteTokenFactory} from "../Factory/ArtisteTokenFactory.sol";
-gi
 contract PicardyArtisteToken is ERC20, Ownable {
 
     uint public maxSupply;
@@ -16,7 +14,6 @@ contract PicardyArtisteToken is ERC20, Ownable {
         factory = _factory;
         cost = _cost;
         transferOwnership(_creator); 
-        
     }
 
     function mint(uint _amount, address _to) external payable {
