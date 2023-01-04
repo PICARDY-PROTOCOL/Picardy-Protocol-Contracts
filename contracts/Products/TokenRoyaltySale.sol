@@ -212,6 +212,10 @@ contract TokenRoyaltySale is Ownable, AutomationCompatibleInterface, ReentrancyG
         return royaltyBalance[addr];
     }
 
+    function getCreator() external view returns (address){
+        return royalty.creator;
+    }
+
     function getRoyaltyPercentage() external view returns(uint){
         return royalty.percentage;
     }
@@ -281,6 +285,8 @@ interface IPicardyTokenRoyaltySale {
 
     /// @notice updates the royalty balance
    function updateRoyalty(uint amount) external;
+
+   function getCreator() external view returns (address);
 
     /// @notice withdraws the royalty contract balance
     function withdraw() external;

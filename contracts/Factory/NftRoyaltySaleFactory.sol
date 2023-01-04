@@ -10,16 +10,33 @@ import "../Products/NftRoyaltySale.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import {IPicardyHub} from "../PicardyHub.sol";
 
+import "@openzeppelin/contracts/proxy/Clones.sol";
+
 contract NftRoyaltySaleFactory is Context {
+
+    address nftRoyaltySaleImplementation;
 
     event NftRoyaltySaleCreated (uint indexed royaltySaleId, address indexed creator, address indexed royaltySaleAddress);
      event RoyaltyDetailsUpdated(uint percentage, address royaltyAddress);
+    
+    struct Details {
+        uint maxSupply; 
+        uint maxMintAmount; 
+        uint cost; 
+        uint percentage;
+        string name;
+        string symbol; 
+        string initBaseURI;
+        string artisteName;
+    }
+
     struct NftRoyaltyDetails {
         uint royaltyId;
         uint royaltyPercentage;
         string royaltyName;
         address royaltyAddress;
     }
+
 
     struct RoyaltyDetails{
         uint royaltyPercentage;
@@ -35,40 +52,30 @@ contract NftRoyaltySaleFactory is Context {
     uint nftRoyaltyId = 1;
     address linkToken;
 
-    constructor(address _picardyHub, address _linkToken) {
+    constructor(address _picardyHub, address _linkToken, address _nftRoyaltySaleImpl) {
         picardyHub = _picardyHub;
         linkToken = _linkToken;
+        nftRoyaltySaleImplementation = _nftRoyaltySaleImpl;
     }
 
-    /**
-        @dev Creates an ERC721 royalty sale contract
-        @param _maxSupply The maximum supply of the Royalty Token
-        @param _maxMintAmount The maximum amount of token a user can buy 
-        @param _cost The price of each token
-        @param _percentage The percentage of royalty to be sold
-        @param _name The name of the royalty
-        @param _symbol The token symbol
-        @param _initBaseURI Image and metadata URI
-     */
-    function createNftRoyalty(
-        uint _maxSupply, 
-        uint _maxMintAmount, 
-        uint _cost, 
-        uint _percentage,
-        string calldata _name, 
-        string calldata _symbol, 
-        string calldata _initBaseURI,
-        string calldata _artisteName
-        ) external returns(address){
-        require(_percentage <= 50, "Royalty percentage cannot be more than 50%");
+    function createNftRoyalty(Details memory details) external returns(address){
+        require(details.percentage <= 50, "Royalty percentage cannot be more than 50%");
         uint newRId = nftRoyaltyId;
-        NftRoyaltySale nftRoyalty = new NftRoyaltySale(_maxSupply, _maxMintAmount, _cost,  _percentage ,_name, _symbol, _initBaseURI, _artisteName, _msgSender(), address(this));
-        NftRoyaltyDetails memory newNftRoyaltyDetails = NftRoyaltyDetails(newRId, _percentage, _name, address(nftRoyalty));
-        royaltySaleAddress[_artisteName][_name] = address(nftRoyalty);
-        nftRoyaltyDetails[address(nftRoyalty)] = newNftRoyaltyDetails;
+        bytes32 salt = keccak256(abi.encodePacked(newRId, block.number, block.timestamp));
+        address nftRoyalty = payable(Clones.cloneDeterministic(nftRoyaltySaleImplementation, salt));
+        bytes memory data = abi.encode(details.maxSupply, details.maxMintAmount, details.cost,  details.percentage , details.name, details.symbol, details.initBaseURI, details.artisteName, _msgSender(), address(this));
+        initilizeRoyaltySale(data);
+        NftRoyaltyDetails memory newNftRoyaltyDetails = NftRoyaltyDetails(newRId, details.percentage, details.name, nftRoyalty);
+        royaltySaleAddress[details.artisteName][details.name] = nftRoyalty;
+        nftRoyaltyDetails[nftRoyalty] = newNftRoyaltyDetails;
         nftRoyaltyId++;
-        emit NftRoyaltySaleCreated(newRId,_msgSender(), address(nftRoyalty));
-        return (address(nftRoyalty));
+        emit NftRoyaltySaleCreated(newRId,_msgSender(), nftRoyalty);
+        return (nftRoyalty);
+    }
+
+    function initilizeRoyaltySale(bytes memory data) internal {
+        (uint _maxSupply, uint _maxMintAmount, uint _cost, uint _percentage, string memory _name, string memory _symbol, string memory _initBaseURI, string memory _artisteName, address _creator, address _factory, address payable _nftRoyaltySale) = abi.decode(data, (uint, uint, uint, uint, string, string, string, string, address, address, address));
+        NftRoyaltySale(_nftRoyaltySale).initialize(_maxSupply, _maxMintAmount, _cost,  _percentage ,_name, _symbol, _initBaseURI, _artisteName, _creator, _factory);
     }
 
     function updateRoyaltyDetails(uint _royaltyPercentage) external {

@@ -53,6 +53,7 @@ contract NftRoyaltySale is Ownable, ReentrancyGuard, Pausable, AutomationCompati
     uint256 lastRoyaltyUpdate;
     uint256 updateInterval;
     bool automationStarted;
+    bool initialized;
 
     mapping (address => uint) nftBalance;
     mapping (address => uint) public royaltyBalance;
@@ -65,8 +66,8 @@ contract NftRoyaltySale is Ownable, ReentrancyGuard, Pausable, AutomationCompati
         }
         _;
     }
-    constructor(
-        uint _maxSupply, 
+    
+    function initialize(uint _maxSupply, 
         uint _maxMintAmount, 
         uint _cost, 
         uint _percentage, 
@@ -75,13 +76,32 @@ contract NftRoyaltySale is Ownable, ReentrancyGuard, Pausable, AutomationCompati
         string memory _initBaseURI, 
         string memory _artistName,
         address _creator,
-        address _factroyAddress)
-        {
+        address _factroyAddress) public {
+            require(!initialized, "already initialized");
             Royalty memory newRoyalty = Royalty(_maxMintAmount, _maxSupply, _cost, _percentage, _artistName, _name, _initBaseURI, _symbol, _creator, _factroyAddress);
             royalty = newRoyalty;
             transferOwnership(_creator);
             nftRoyaltyState = NftRoyaltyState.CLOSED;
+            initialized = true;
         }
+    
+    // constructor(
+    //     uint _maxSupply, 
+    //     uint _maxMintAmount, 
+    //     uint _cost, 
+    //     uint _percentage, 
+    //     string memory _name,
+    //     string memory _symbol, 
+    //     string memory _initBaseURI, 
+    //     string memory _artistName,
+    //     address _creator,
+    //     address _factroyAddress)
+    //     {
+    //         Royalty memory newRoyalty = Royalty(_maxMintAmount, _maxSupply, _cost, _percentage, _artistName, _name, _initBaseURI, _symbol, _creator, _factroyAddress);
+    //         royalty = newRoyalty;
+    //         transferOwnership(_creator);
+    //         nftRoyaltyState = NftRoyaltyState.CLOSED;
+    //     }
 
     function start() external onlyOwner {
         require(nftRoyaltyState == NftRoyaltyState.CLOSED);
@@ -205,6 +225,10 @@ contract NftRoyaltySale is Ownable, ReentrancyGuard, Pausable, AutomationCompati
         return (price, maxSupply, percentage, symbol, name, artisteName);
     }
 
+    function getCreator() external view returns(address){
+        return royalty.creator;
+    }
+
     function withdraw() external onlyOwner { 
         require(nftRoyaltyState == NftRoyaltyState.CLOSED, "royalty sale still open");
         (address royaltyAddress, uint royaltyPercentage) = INftRoyaltySaleFactory(royalty.factoryAddress).getRoyaltyDetails();
@@ -270,6 +294,7 @@ contract NftRoyaltySale is Ownable, ReentrancyGuard, Pausable, AutomationCompati
     receive() external payable {
         emit Received(msg.sender, msg.value);
     }
+
 }
 
 interface IPicardyNftRoyaltySale {
@@ -279,6 +304,8 @@ interface IPicardyNftRoyaltySale {
 
     /// @dev gets token details of the caller
     function getTokenDetails() external returns(uint, uint, uint, string memory, string memory);
+
+    function getCreator() external returns(address);
    
    /// @dev withdraws royalty balance of the caller
     function withdrawRoyalty(uint _amount) external;

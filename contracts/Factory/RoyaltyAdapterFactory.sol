@@ -8,10 +8,15 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/utils/Context.sol";
 import {IPicardyHub} from "../PicardyHub.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
 import "../Chainlink/royaltyAdapter.sol";
 import "../Chainlink/tokenRoyaltyAdapter.sol";
 
 contract RoyaltyAdapterFactory is Context{
+
+    address nftRoyaltyAdapterImplimentation;
+    address tokenRoyaltyAdapterImplimentation;
+    
     address public picardyHub;
     address private linkToken;
     address oracle;
@@ -33,37 +38,43 @@ contract RoyaltyAdapterFactory is Context{
         _;
     }
 
-    constructor (address _picardyHub, address _linkToken, address _oracle, string memory _jobId){
+    constructor (address _picardyHub, address _linkToken, address _oracle, address _nftRoyaltyAdapterImp, address _tokenRoyaltyAdapterImpl, string memory _jobId){
         picardyHub = _picardyHub;
         linkToken = _linkToken;
         oracle = _oracle;
+        nftRoyaltyAdapterImplimentation = _nftRoyaltyAdapterImp;
+        tokenRoyaltyAdapterImplimentation = _tokenRoyaltyAdapterImpl;
         jobId = _jobId;
     }
 
-    function createAdapter(address _royaltySaleAddress, uint royaltyType) external returns(address n_royaltyAddress, uint256 n_adapterId){
+    function createAdapter(address _royaltySaleAddress, uint royaltyType) external returns(address _royaltyAddress, uint256 n_adapterId){
          uint256 _adapterId = adapterId;
         
         if (royaltyType == 0){
         require(adapterExixt[_royaltySaleAddress] == false, "Adapter Already exist");
-        RoyaltyAdapter royaltyAdapter = new RoyaltyAdapter(linkToken, oracle, jobId, _royaltySaleAddress);
-        AdapterDetails memory n_adapterDetails = AdapterDetails({adapterAddress:address(royaltyAdapter), adapterId: _adapterId});
+        bytes32 salt = keccak256(abi.encodePacked(_royaltySaleAddress, block.number, block.timestamp));
+        address n_royaltyAddress = Clones.cloneDeterministic(nftRoyaltyAdapterImplimentation, salt);
+        RoyaltyAdapter(n_royaltyAddress).initilize(linkToken, oracle, jobId, _royaltySaleAddress, msg.sender);
+        AdapterDetails memory n_adapterDetails = AdapterDetails({adapterAddress: n_royaltyAddress, adapterId: _adapterId});
         adapterDetails[_royaltySaleAddress] = n_adapterDetails;
         adapterId++;
         adapterExixt[_royaltySaleAddress] = true;
-        n_royaltyAddress = address(royaltyAdapter);
         n_adapterId = _adapterId;
-        return(n_royaltyAddress, n_adapterId);
+        _royaltyAddress = n_royaltyAddress;
+        return(_royaltyAddress, n_adapterId);
         } else if(royaltyType == 1){
         
         require(adapterExixt[_royaltySaleAddress] == false, "Adapter Already exist");
-        TokenRoyaltyAdapter royaltyAdapter = new TokenRoyaltyAdapter(linkToken, oracle, jobId, _royaltySaleAddress);
-        AdapterDetails memory n_adapterDetails = AdapterDetails({adapterAddress:address(royaltyAdapter), adapterId: _adapterId});
+        bytes32 salt = keccak256(abi.encodePacked(_royaltySaleAddress, block.number, block.timestamp));
+        address n_royaltyAddress = Clones.cloneDeterministic(tokenRoyaltyAdapterImplimentation, salt);
+        TokenRoyaltyAdapter(n_royaltyAddress).initilize(linkToken, oracle, jobId, _royaltySaleAddress, msg.sender);
+        AdapterDetails memory n_adapterDetails = AdapterDetails({adapterAddress:n_royaltyAddress, adapterId: _adapterId});
         adapterDetails[_royaltySaleAddress] = n_adapterDetails;
         adapterId++;
         adapterExixt[_royaltySaleAddress] = true;
-        n_royaltyAddress = address(royaltyAdapter);
         n_adapterId = _adapterId;
-        return(n_royaltyAddress, n_adapterId);
+        _royaltyAddress = n_royaltyAddress;
+        return(_royaltyAddress, n_adapterId);
         }
         
     }

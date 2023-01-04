@@ -2,11 +2,12 @@
 pragma solidity ^0.8.7;
 
 import "@chainlink/contracts/src/v0.8/ChainlinkClient.sol";
-import "@chainlink/contracts/src/v0.8/ConfirmedOwner.sol";
+//import "@chainlink/contracts/src/v0.8/ConfirmedOwner.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IPicardyNftRoyaltySale} from "../Products/NftRoyaltySale.sol";
 
-contract RoyaltyAdapter is ChainlinkClient, ConfirmedOwner {
+contract RoyaltyAdapter is ChainlinkClient, Ownable {
     using Chainlink for Chainlink.Request;
 
     event RoyaltyData(bytes32 indexed requestId, uint indexed value);
@@ -17,12 +18,17 @@ contract RoyaltyAdapter is ChainlinkClient, ConfirmedOwner {
     address public oracle;
     string public jobId;
     address public royaltySaleAddress;
+    bool public initialized;
 
-    constructor(address _linkToken, address _oracle, string memory _jobId, address _royaltySaleAddress) ConfirmedOwner(msg.sender) {
+    function initilize(address _linkToken, address _oracle, string memory _jobId, address _royaltySaleAddress, address _owner) public {
+        require(!initialized, "Already initialized!");
+        require(IPicardyNftRoyaltySale(_royaltySaleAddress).getCreator() == _owner, "royalty adapter: Un-Auth , not owner");
         royaltySaleAddress = _royaltySaleAddress;
         jobId = _jobId;
         oracle = _oracle;
         setChainlinkToken(_linkToken);
+        transferOwnership(_owner);
+        initialized = true;
         // Link Mumbai 0x326C977E6efc84E512bB9C30f76E30c160eD06FB
     }
 
