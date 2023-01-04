@@ -75,7 +75,7 @@ contract NftRoyaltySaleFactory is Context {
 
     function initilizeRoyaltySale(bytes memory data) internal {
         (uint _maxSupply, uint _maxMintAmount, uint _cost, uint _percentage, string memory _name, string memory _symbol, string memory _initBaseURI, string memory _artisteName, address _creator, address _factory, address payable _nftRoyaltySale) = abi.decode(data, (uint, uint, uint, uint, string, string, string, string, address, address, address));
-        NftRoyaltySale(_nftRoyaltySale).initialize(_maxSupply, _maxMintAmount, _cost,  _percentage ,_name, _symbol, _initBaseURI, _artisteName, _creator, _factory);
+        NftRoyaltySale(_nftRoyaltySale).initilize(_maxSupply, _maxMintAmount, _cost,  _percentage ,_name, _symbol, _initBaseURI, _artisteName, _creator, _factory);
     }
 
     function updateRoyaltyDetails(uint _royaltyPercentage) external {

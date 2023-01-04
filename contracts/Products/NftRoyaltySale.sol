@@ -67,7 +67,7 @@ contract NftRoyaltySale is Ownable, ReentrancyGuard, Pausable, AutomationCompati
         _;
     }
     
-    function initialize(uint _maxSupply, 
+    function initilize(uint _maxSupply, 
         uint _maxMintAmount, 
         uint _cost, 
         uint _percentage, 
@@ -84,24 +84,6 @@ contract NftRoyaltySale is Ownable, ReentrancyGuard, Pausable, AutomationCompati
             nftRoyaltyState = NftRoyaltyState.CLOSED;
             initialized = true;
         }
-    
-    // constructor(
-    //     uint _maxSupply, 
-    //     uint _maxMintAmount, 
-    //     uint _cost, 
-    //     uint _percentage, 
-    //     string memory _name,
-    //     string memory _symbol, 
-    //     string memory _initBaseURI, 
-    //     string memory _artistName,
-    //     address _creator,
-    //     address _factroyAddress)
-    //     {
-    //         Royalty memory newRoyalty = Royalty(_maxMintAmount, _maxSupply, _cost, _percentage, _artistName, _name, _initBaseURI, _symbol, _creator, _factroyAddress);
-    //         royalty = newRoyalty;
-    //         transferOwnership(_creator);
-    //         nftRoyaltyState = NftRoyaltyState.CLOSED;
-    //     }
 
     function start() external onlyOwner {
         require(nftRoyaltyState == NftRoyaltyState.CLOSED);

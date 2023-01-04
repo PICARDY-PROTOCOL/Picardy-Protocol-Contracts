@@ -6,12 +6,16 @@ pragma experimental ABIEncoderV2;
 
 import "../Products/TokenRoyaltySale.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
+
+import "@openzeppelin/contracts/proxy/Clones.sol";
 import {IPicardyHub} from "../PicardyHub.sol";
 
 /// @title Token Royalty Sale Factory
 /// @author Blok_hamster  
 /// @notice Used to create token royalty sale contracts.
 contract TokenRoyaltySaleFactory is Context {
+
+    address tokenRoyaltySaleImplementation;
     
     event TokenRoyaltyCreated (address indexed creator, address indexed tokenRoyaltyAddress, uint indexed royaltyId);
     event RoyaltyDetailsUpdated(uint indexed percentage, address indexed royaltyAddress);
@@ -35,9 +39,10 @@ contract TokenRoyaltySaleFactory is Context {
     address picardyHub;
     address linkToken;
     uint tokenRoyaltyId = 1;
-   constructor (address _picardyHub, address _linkToken){
+   constructor (address _picardyHub, address _linkToken, address _tokenRoyaltySaleImpl){
         picardyHub = _picardyHub;
         linkToken = _linkToken;
+        tokenRoyaltySaleImplementation = _tokenRoyaltySaleImpl;
     }
 
 
@@ -46,13 +51,16 @@ contract TokenRoyaltySaleFactory is Context {
     ///@param _returnPercentage Percentage of royalty to sell
     function createTokenRoyalty(uint _askAmount, uint _returnPercentage, string memory creatorName, string memory name) external returns(address){
         uint newTokenRoyaltyId = tokenRoyaltyId;
-        TokenRoyaltySale tokenRoyalty = new TokenRoyaltySale(_askAmount, _returnPercentage, address(this), _msgSender(), creatorName, name);
-        TokenRoyaltyDetails memory newTokenRoyaltyDetails = TokenRoyaltyDetails(newTokenRoyaltyId, _askAmount, _returnPercentage, address(tokenRoyalty));
-        tokenRoyaltyDetailsIdMap[newTokenRoyaltyId] = address(tokenRoyalty);
-        tokenRoyaltyDetailsMap[newTokenRoyaltyId] = newTokenRoyaltyDetails;
+
+        bytes32 salt = keccak256(abi.encodePacked(newTokenRoyaltyId, block.number, block.timestamp));
+        address payable tokenRoyalty = payable(Clones.cloneDeterministic(tokenRoyaltySaleImplementation, salt));
+        TokenRoyaltySale(tokenRoyalty).initilize(_askAmount, _returnPercentage, address(this), _msgSender(), creatorName, name);
+        TokenRoyaltyDetails memory n_TokenRoyaltyDetails = TokenRoyaltyDetails(newTokenRoyaltyId, _askAmount, _returnPercentage, address(tokenRoyalty));
+        tokenRoyaltyDetailsIdMap[newTokenRoyaltyId] = tokenRoyalty;
+        tokenRoyaltyDetailsMap[newTokenRoyaltyId] = n_TokenRoyaltyDetails;
         tokenRoyaltyId++;
-        emit TokenRoyaltyCreated(_msgSender(), address(tokenRoyalty), newTokenRoyaltyId);
-        return(address(tokenRoyalty));
+        emit TokenRoyaltyCreated(_msgSender(), tokenRoyalty, newTokenRoyaltyId);
+        return(tokenRoyalty);
     }
 
     /// @notice the function is used to update the royalty percentage.

@@ -46,6 +46,8 @@ contract TokenRoyaltySale is Ownable, AutomationCompatibleInterface, ReentrancyG
     uint256 lastRoyaltyUpdate;
     uint256 updateInterval;
     bool automationStarted;
+    bool initilized;
+
   
     mapping (address => uint) royaltyBalance;
     mapping (address => bool) isPoolMember;
@@ -57,7 +59,9 @@ contract TokenRoyaltySale is Ownable, AutomationCompatibleInterface, ReentrancyG
         }
         _;
     }
-    constructor (uint _royaltyPoolSize, uint _percentage, address _tokenRoyaltyFactory, address _creator, string memory _creatorsName, string memory _name){
+
+    function initilize(uint _royaltyPoolSize, uint _percentage, address _tokenRoyaltyFactory, address _creator, string memory _creatorsName, string memory _name) external {
+        require(!initilized, "token Royalty: already initilized ");
         royalty.royaltyPoolSize = _royaltyPoolSize;
         royalty.percentage = _percentage;
         royalty.tokenRoyaltyFactory = _tokenRoyaltyFactory;
@@ -67,6 +71,16 @@ contract TokenRoyaltySale is Ownable, AutomationCompatibleInterface, ReentrancyG
         transferOwnership(_creator);
         _CPToken();
     }
+    // constructor (uint _royaltyPoolSize, uint _percentage, address _tokenRoyaltyFactory, address _creator, string memory _creatorsName, string memory _name){
+    //     royalty.royaltyPoolSize = _royaltyPoolSize;
+    //     royalty.percentage = _percentage;
+    //     royalty.tokenRoyaltyFactory = _tokenRoyaltyFactory;
+    //     royalty.creator = _creator;
+    //     royalty.creatorsName = _creatorsName;
+    //     royalty.name = _name;
+    //     transferOwnership(_creator);
+    //     _CPToken();
+    // }
 
     function start() external onlyOwner {
         require(tokenRoyaltyState == TokenRoyaltyState.CLOSED);
