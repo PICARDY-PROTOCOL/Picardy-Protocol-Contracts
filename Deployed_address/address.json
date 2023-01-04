@@ -1,0 +1,11 @@
+{
+  "picardyHub": "0xF701f2404A65d24A4925BF35F7c9d152C126144D",
+  "picardyVaultFactory": "0xa0531b7dA1147F69B031520b9250B24bc74cA0A1",
+  "artisteTokenFactory": "0xc9042622083C34f79D6EE7dD5ab0E71c2a511B85",
+  "nftRoyaltySaleFactory": "0x3F0a4291d47b9eCee61ae9159FCbd3EC000fb3a7",
+  "tokenRoyaltySaleFactory": "0xa6672cCEbD9FdFf86b31B7919F89fa0978cF4283",
+  "crowdfundFactory": "0xEF70Da20BD1e7001477F106DA0C7d14B33440955",
+  "daoFactory": "0x35b20BEC95b403ffc075E72076d083e5F166C107",
+  "timelockFactory": "0xe41f5E4633535619546A60df7f71B8E60c6f9aCf",
+  "royaltyAdapterFactory": "0x25cE0c41e9D4D1C5d9AEEacED49976E88485C1d5"
+}
