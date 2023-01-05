@@ -94,18 +94,16 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
     }
 
         //call this to start automtion of the royalty contract, deposit link for automation
-    function setupAutomation(address _regAddr, uint256 _updateInterval, address _royaltyAdapter, uint256 _depositAmount) external onlyOwner {
-        address linkAddress =  ITokenRoyaltySaleFactory(royalty.tokenRoyaltyFactory).getLinkToken();
+    function setupAutomation(address _regAddr, uint256 _updateInterval, address _royaltyAdapter) external onlyOwner {
         
         require (automationStarted == false, "startAutomation: automation started");
-        require(IERC20(linkAddress).balanceOf(msg.sender) > _depositAmount, "link balance low");
-        IERC20(linkAddress).transfer(address(this), _depositAmount);
         keeperRegistryAddress = _regAddr;
         updateInterval = _updateInterval;
         royaltyAdapter = _royaltyAdapter;
+        _startAutomation();
     }
 
-    function startAutomation() external {
+    function _startAutomation() internal {
         require (automationStarted == false, "startAutomation: automation started");
         automationStarted = true;
         emit AutomationStarted(true);
@@ -162,6 +160,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
             uint _amount = (poolSize * amount) / 100;
             royaltyBalance[poolMember] += _amount;
         }
+        lastRoyaltyUpdate = block.timestamp;
         emit RoyaltyBalanceUpdated(block.timestamp);
     }
 
@@ -174,6 +173,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
             uint _amount = (poolSize * amount) / 100;
             royaltyBalance[poolMember] += _amount;
         }
+        lastRoyaltyUpdate = block.timestamp;
         emit RoyaltyBalanceUpdated(block.timestamp);
     }
 
