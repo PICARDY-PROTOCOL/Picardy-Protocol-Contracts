@@ -1,17 +1,1 @@
-{
-  "picardyHub": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
-  "picardyVaultFactory": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
-  "artisteTokenFactory": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
-  "nftRoyaltySaleFactory": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
-  "tokenRoyaltySaleFactory": "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
-  "crowdfundFactory": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
-  "daoFactory": "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
-  "timelockFactory": "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0",
-  "royaltyAdapterFactory": "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
-  "implimentations": {
-    "nftRoyaltySale": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
-    "tokenRoyaltySale": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
-    "nftRoyaltyAdapter": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
-    "tokenRoyaltyAdapter": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
-  }
-}
+{"picardyHub":"0x9d4454B023096f34B160D6B654540c56A1F81688","artisteTokenFactory":"0x5eb3Bc0a489C5A8288765d2336659EbCA68FCd00","nftRoyaltySaleFactory":"0x36C02dA8a0983159322a80FFE9F24b1acfF8B570","tokenRoyaltySaleFactory":"0x809d550fca64d94Bd9F66E60752A544199cfAC3D","royaltyAdapterFactory":"0x4c5859f0F772848b2D91F1D83E2Fe57935348029","implimentations":{"nftRoyaltySale":"0x0E801D84Fa97b50751Dbf25036d067dCf18858bF","tokenRoyaltySale":"0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf","nftRoyaltyAdapter":"0x0E801D84Fa97b50751Dbf25036d067dCf18858bF","tokenRoyaltyAdapter":"0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf"}}

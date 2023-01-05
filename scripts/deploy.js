@@ -39,9 +39,9 @@ async function main() {
     "TokenRoyaltyAdapter"
   );
 
-  const PicardyVaultFactory = await hre.ethers.getContractFactory(
-    "PicardyVaultFactory"
-  );
+  // const PicardyVaultFactory = await hre.ethers.getContractFactory(
+  //   "PicardyVaultFactory"
+  // );
   const ArtisteTokenFactory = await hre.ethers.getContractFactory(
     "ArtisteTokenFactory"
   );
@@ -51,16 +51,16 @@ async function main() {
   const TokenRoyaltySaleFactory = await hre.ethers.getContractFactory(
     "TokenRoyaltySaleFactory"
   );
-  const CrowdfundFactory = await hre.ethers.getContractFactory(
-    "CrowdfundFactory"
-  );
+  // const CrowdfundFactory = await hre.ethers.getContractFactory(
+  //   "CrowdfundFactory"
+  // );
   const RoyaltyAdapterFactory = await hre.ethers.getContractFactory(
     "RoyaltyAdapterFactory"
   );
-  const DaoFactory = await hre.ethers.getContractFactory("DaoFactory");
-  const TimelockFactory = await hre.ethers.getContractFactory(
-    "TimelockFactory"
-  );
+  // const DaoFactory = await hre.ethers.getContractFactory("DaoFactory");
+  // const TimelockFactory = await hre.ethers.getContractFactory(
+  //   "TimelockFactory"
+  // );
 
   //Deploy Implimentation contracts
 
@@ -86,11 +86,11 @@ async function main() {
   await picardyHub.deployed();
   const picardyHubAddress = picardyHub.address;
 
-  const picardyVaultFactory = await PicardyVaultFactory.deploy(
-    picardyHubAddress
-  );
-  await picardyVaultFactory.deployed();
-  const picardyVaultFactoryAddress = picardyVaultFactory.address;
+  // const picardyVaultFactory = await PicardyVaultFactory.deploy(
+  //   picardyHubAddress
+  // );
+  // await picardyVaultFactory.deployed();
+  // const picardyVaultFactoryAddress = picardyVaultFactory.address;
 
   const artisteTokenFactory = await ArtisteTokenFactory.deploy(
     picardyHubAddress
@@ -114,9 +114,9 @@ async function main() {
   await tokenRoyaltySaleFactory.deployed();
   const tokenRoyaltySaleFactoryAddress = tokenRoyaltySaleFactory.address;
 
-  const crowdfundFactory = await CrowdfundFactory.deploy(picardyHubAddress);
-  await crowdfundFactory.deployed();
-  const crowdfundFactoryAddress = crowdfundFactory.address;
+  // const crowdfundFactory = await CrowdfundFactory.deploy(picardyHubAddress);
+  // await crowdfundFactory.deployed();
+  // const crowdfundFactoryAddress = crowdfundFactory.address;
 
   const royaltyAdapterFactory = await RoyaltyAdapterFactory.deploy(
     picardyHubAddress,
@@ -129,30 +129,30 @@ async function main() {
   await royaltyAdapterFactory.deployed();
   const royaltyAdapterFactoryAddress = royaltyAdapterFactory.address;
 
-  const daoFactory = await DaoFactory.deploy(picardyHubAddress);
-  await daoFactory.deployed();
-  const daoFactoryAddress = daoFactory.address;
+  // const daoFactory = await DaoFactory.deploy(picardyHubAddress);
+  // await daoFactory.deployed();
+  // const daoFactoryAddress = daoFactory.address;
 
-  const timelockFactory = await TimelockFactory.deploy(picardyHubAddress);
-  await timelockFactory.deployed();
-  const timelockFactoryAddress = timelockFactory.address;
+  // const timelockFactory = await TimelockFactory.deploy(picardyHubAddress);
+  // await timelockFactory.deployed();
+  // const timelockFactoryAddress = timelockFactory.address;
 
   //Init dao factory and timelock factory
 
-  await daoFactory.addTimelockFactoryAddress(timelockFactoryAddress);
-  await timelockFactory.addDaoFactoryAddress(daoFactoryAddress);
+  // await daoFactory.addTimelockFactoryAddress(timelockFactoryAddress);
+  // await timelockFactory.addDaoFactoryAddress(daoFactoryAddress);
 
   // log Addresses
 
   const deployedAddress = {
     picardyHub: picardyHubAddress,
-    picardyVaultFactory: picardyVaultFactoryAddress,
+    // picardyVaultFactory: picardyVaultFactoryAddress,
     artisteTokenFactory: artisteTokenFactoryAddress,
     nftRoyaltySaleFactory: nftRoyaltySaleFactoryAddress,
     tokenRoyaltySaleFactory: tokenRoyaltySaleFactoryAddress,
-    crowdfundFactory: crowdfundFactoryAddress,
-    daoFactory: daoFactoryAddress,
-    timelockFactory: timelockFactoryAddress,
+    // crowdfundFactory: crowdfundFactoryAddress,
+    // daoFactory: daoFactoryAddress,
+    // timelockFactory: timelockFactoryAddress,
     royaltyAdapterFactory: royaltyAdapterFactoryAddress,
 
     implimentations: {
@@ -168,13 +168,13 @@ async function main() {
 
   console.table({
     picardyHub: picardyHubAddress,
-    picardyVaultFactory: picardyVaultFactoryAddress,
+    // picardyVaultFactory: picardyVaultFactoryAddress,
     artisteTokenFactory: artisteTokenFactoryAddress,
     nftRoyaltySaleFactory: nftRoyaltySaleFactoryAddress,
     tokenRoyaltySaleFactory: tokenRoyaltySaleFactoryAddress,
-    crowdfundFactory: crowdfundFactoryAddress,
-    daoFactory: daoFactoryAddress,
-    timelockFactory: timelockFactoryAddress,
+    // crowdfundFactory: crowdfundFactoryAddress,
+    // daoFactory: daoFactoryAddress,
+    // timelockFactory: timelockFactoryAddress,
     royaltyAdapterFactory: royaltyAdapterFactoryAddress,
     nftRoyaltySaleImp: nftRoyaltyAdapterImpAddr,
     tokenRoyaltySaleImp: tokenRoyaltyAdapterImpAddr,
