@@ -161,7 +161,7 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
             uint balance = valuePerNft * nftBalance[holders[i]];
             royaltyBalance[holders[i]] += balance;
         }
-
+        lastRoyaltyUpdate = block.timestamp;
         emit RoyaltyUpdated(_amount);
     }
 
@@ -176,6 +176,7 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
             royaltyBalance[holders[i]] += balance;
         }
 
+        lastRoyaltyUpdate = block.timestamp;
         emit RoyaltyUpdated(_amount);
     }
 

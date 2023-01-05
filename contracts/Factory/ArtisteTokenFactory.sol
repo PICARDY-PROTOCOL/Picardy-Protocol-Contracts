@@ -81,6 +81,7 @@ contract ArtisteTokenFactory is Context {
 }
 
 interface IArtisteTokenFactory {
+    function createArtisteToken(uint _totalAmount, string memory _name, string memory _symbol, uint _cost) external;
     function getRoyaltyDetails() external view returns (address, uint);
     function getHubAddress() external view returns (address);
 }
