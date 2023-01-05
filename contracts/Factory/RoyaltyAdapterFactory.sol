@@ -49,7 +49,7 @@ contract RoyaltyAdapterFactory is Context{
         jobId = _jobId;
     }
 
-    function createAdapter(address _royaltySaleAddress, uint royaltyType) external returns(address, uint256){
+    function createAdapter(address _royaltySaleAddress, uint royaltyType) external{
          uint256 _adapterId = adapterId;
         
         if (royaltyType == 0){
@@ -62,7 +62,6 @@ contract RoyaltyAdapterFactory is Context{
         adapterId++;
         adapterExixt[_royaltySaleAddress] = true;
         emit AdapterCreated(n_royaltyAdapter, _adapterId);
-        return(n_royaltyAdapter, _adapterId);
         } else if(royaltyType == 1){
         
         require(adapterExixt[_royaltySaleAddress] == false, "Adapter Already exist");
@@ -74,7 +73,6 @@ contract RoyaltyAdapterFactory is Context{
         adapterId++;
         adapterExixt[_royaltySaleAddress] = true;
         emit AdapterCreated(n_royaltyAdapter, _adapterId);
-        return(n_royaltyAdapter, _adapterId);
         }
         
     }

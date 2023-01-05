@@ -8,4 +8,8 @@ typechain-types
 #Hardhat files
 cache
 artifacts
+contracts/Factory/CrowdfundFactory.sol
+contracts/Factory/DaoFactory.sol
+contracts/Factory/PicardyVaultFactory.sol
+contracts/Factory/TimeLockFactory.sol
 
