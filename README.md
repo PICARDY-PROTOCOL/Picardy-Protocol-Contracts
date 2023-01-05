@@ -1,4 +1,4 @@
-# Picardy Protocol
+## Picardy Protocol
 
 Picardy protocol exposes a number of factories that are used to create the different products offered by the protocol. Also utilizing chainlink keepers for automation and external adapter to bring in realtime music royalty data on chain.
 Using the factories is fairly straight forward as each contract exposes an interface to be used with other smart contracts. Another way to use the protocol is with the various contracts ABI (Application binary interface) or both depending on your use case.
