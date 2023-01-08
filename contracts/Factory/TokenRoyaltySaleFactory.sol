@@ -9,11 +9,12 @@ import "@openzeppelin/contracts/utils/Context.sol";
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import {IPicardyHub} from "../PicardyHub.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /// @title Token Royalty Sale Factory
 /// @author Blok_hamster  
 /// @notice Used to create token royalty sale contracts.
-contract TokenRoyaltySaleFactory is Context {
+contract TokenRoyaltySaleFactory is Context, ReentrancyGuard {
 
     address tokenRoyaltySaleImplementation;
     
@@ -49,16 +50,15 @@ contract TokenRoyaltySaleFactory is Context {
     ///@dev Creats A ERC20 token royalty sale contract 
     ///@param _askAmount The total askinng amount for royalty
     ///@param _returnPercentage Percentage of royalty to sell
-    function createTokenRoyalty(uint _askAmount, uint _returnPercentage, string memory creatorName, string memory name) external returns(address){
+    function createTokenRoyalty(uint _askAmount, uint _returnPercentage, string memory creatorName, string memory name) external nonReentrant returns(address){
         uint newTokenRoyaltyId = tokenRoyaltyId;
-
         bytes32 salt = keccak256(abi.encodePacked(newTokenRoyaltyId, block.number, block.timestamp));
         address payable tokenRoyalty = payable(Clones.cloneDeterministic(tokenRoyaltySaleImplementation, salt));
-        TokenRoyaltySale(tokenRoyalty).initilize(_askAmount, _returnPercentage, address(this), _msgSender(), creatorName, name);
         TokenRoyaltyDetails memory n_TokenRoyaltyDetails = TokenRoyaltyDetails(newTokenRoyaltyId, _askAmount, _returnPercentage, address(tokenRoyalty));
         tokenRoyaltyDetailsIdMap[newTokenRoyaltyId] = tokenRoyalty;
         tokenRoyaltyDetailsMap[newTokenRoyaltyId] = n_TokenRoyaltyDetails;
         tokenRoyaltyId++;
+        TokenRoyaltySale(tokenRoyalty).initilize(_askAmount, _returnPercentage, address(this), _msgSender(), creatorName, name);
         emit TokenRoyaltyCreated(_msgSender(), tokenRoyalty, newTokenRoyaltyId);
         return(tokenRoyalty);
     }

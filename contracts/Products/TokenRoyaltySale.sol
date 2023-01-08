@@ -76,6 +76,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         royalty.name = _name;
         owner = _creator;
         _CPToken();
+        initilized = true;
     }
     // constructor (uint _royaltyPoolSize, uint _percentage, address _tokenRoyaltyFactory, address _creator, string memory _creatorsName, string memory _name){
     //     royalty.royaltyPoolSize = _royaltyPoolSize;
@@ -120,7 +121,8 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
     function _buyRoyalty(uint _amount) internal {
         isPoolMember[msg.sender] = true;
         royalty.royaltyPoolMembers.push(_msgSender());
-        IERC20(royalty.royaltyCPToken).transfer( _msgSender(), _amount);
+        (bool os) = IERC20(royalty.royaltyCPToken).transfer( _msgSender(), _amount);
+        require(os, "transfer failed");
         if(royalty.royaltyPoolSize == royalty.royaltyPoolBalance){
             tokenRoyaltyState = TokenRoyaltyState.CLOSED;
         }
@@ -257,10 +259,10 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
 
 
     function _CPToken() internal {
-        CPToken newCpToken = new CPToken("Picardy Royalty Token");
-        newCpToken.mint(royalty.royaltyPoolSize, address(this));
+        CPToken newCpToken = new CPToken("Picardy Royalty Token", address(this));
         royalty.royaltyCPToken = address(newCpToken);
         tokenRoyaltyState = TokenRoyaltyState.CLOSED;
+        newCpToken.mint(royalty.royaltyPoolSize, address(this));
     }
 
     function _start() internal {

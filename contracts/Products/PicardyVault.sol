@@ -80,10 +80,11 @@ contract PicardyVault is Ownable {
 
     function updateVaultReturn() external payable onlyOwner {
         require(msg.value > 0);
+        uint total = msg.value;
         for(uint i = 0; i < vaultDetails.vaultMembers.length; i++){
         uint userShares = IERC20(vaultDetails.vsToken).balanceOf(vaultDetails.vaultMembers[i]);
         uint totalSupply = IERC20(vaultDetails.vsToken).totalSupply();
-        uint valuePerShare = msg.value / totalSupply; 
+        uint valuePerShare = total / totalSupply; 
         uint userShareValue = userShares * valuePerShare;
         memberReturnBalance[vaultDetails.vaultMembers[i]] += userShareValue;
         }

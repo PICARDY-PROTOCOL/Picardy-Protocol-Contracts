@@ -11,8 +11,9 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import {IPicardyHub} from "../PicardyHub.sol";
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract NftRoyaltySaleFactory is Context {
+contract NftRoyaltySaleFactory is Context , ReentrancyGuard {
 
     address nftRoyaltySaleImplementation;
 
@@ -58,16 +59,16 @@ contract NftRoyaltySaleFactory is Context {
         nftRoyaltySaleImplementation = _nftRoyaltySaleImpl;
     }
 
-    function createNftRoyalty(Details memory details) external returns(address){
+    function createNftRoyalty(Details memory details) external nonReentrant returns(address){
         require(details.percentage <= 50, "Royalty percentage cannot be more than 50%");
         uint newRId = nftRoyaltyId;
         bytes32 salt = keccak256(abi.encodePacked(newRId, block.number, block.timestamp));
         address payable nftRoyalty = payable(Clones.cloneDeterministic(nftRoyaltySaleImplementation, salt));
-        NftRoyaltySale(nftRoyalty).initilize(details.maxSupply, details.maxMintAmount, details.cost,  details.percentage , details.name, details.symbol, details.initBaseURI, details.artisteName, _msgSender(), address(this));
         NftRoyaltyDetails memory newNftRoyaltyDetails = NftRoyaltyDetails(newRId, details.percentage, details.name, nftRoyalty);
         royaltySaleAddress[details.artisteName][details.name] = nftRoyalty;
         nftRoyaltyDetails[nftRoyalty] = newNftRoyaltyDetails;
         nftRoyaltyId++;
+        NftRoyaltySale(nftRoyalty).initilize(details.maxSupply, details.maxMintAmount, details.cost,  details.percentage , details.name, details.symbol, details.initBaseURI, details.artisteName, _msgSender(), address(this));
         emit NftRoyaltySaleCreated(newRId,_msgSender(), nftRoyalty);
         return (nftRoyalty);
     }

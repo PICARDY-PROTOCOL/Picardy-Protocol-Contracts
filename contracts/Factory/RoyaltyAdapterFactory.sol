@@ -11,8 +11,9 @@ import {IPicardyHub} from "../PicardyHub.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "../Chainlink/royaltyAdapter.sol";
 import "../Chainlink/tokenRoyaltyAdapter.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract RoyaltyAdapterFactory is Context{
+contract RoyaltyAdapterFactory is Context, ReentrancyGuard{
 
     event AdapterCreated(address indexed adapterAddress, uint indexed adapterId);
 
@@ -49,29 +50,29 @@ contract RoyaltyAdapterFactory is Context{
         jobId = _jobId;
     }
 
-    function createAdapter(address _royaltySaleAddress, uint royaltyType) external{
+    function createAdapter(address _royaltySaleAddress, uint royaltyType) external nonReentrant{
          uint256 _adapterId = adapterId;
         
         if (royaltyType == 0){
         require(adapterExixt[_royaltySaleAddress] == false, "Adapter Already exist");
         bytes32 salt = keccak256(abi.encodePacked(_royaltySaleAddress, block.number, block.timestamp));
         address payable n_royaltyAdapter = payable(Clones.cloneDeterministic(nftRoyaltyAdapterImplimentation, salt));
-        RoyaltyAdapter(n_royaltyAdapter).initilize(linkToken, oracle, jobId, _royaltySaleAddress, msg.sender);
         AdapterDetails memory n_adapterDetails = AdapterDetails({adapterAddress: n_royaltyAdapter, adapterId: _adapterId});
         adapterDetails[_royaltySaleAddress] = n_adapterDetails;
         adapterId++;
         adapterExixt[_royaltySaleAddress] = true;
+        RoyaltyAdapter(n_royaltyAdapter).initilize(linkToken, oracle, jobId, _royaltySaleAddress, msg.sender);
         emit AdapterCreated(n_royaltyAdapter, _adapterId);
         } else if(royaltyType == 1){
         
         require(adapterExixt[_royaltySaleAddress] == false, "Adapter Already exist");
         bytes32 salt = keccak256(abi.encodePacked(_royaltySaleAddress, block.number, block.timestamp));
         address payable n_royaltyAdapter = payable(Clones.cloneDeterministic(tokenRoyaltyAdapterImplimentation, salt));
-        TokenRoyaltyAdapter(n_royaltyAdapter).initilize(linkToken, oracle, jobId, _royaltySaleAddress, msg.sender);
         AdapterDetails memory n_adapterDetails = AdapterDetails({adapterAddress:n_royaltyAdapter, adapterId: _adapterId});
         adapterDetails[_royaltySaleAddress] = n_adapterDetails;
         adapterId++;
         adapterExixt[_royaltySaleAddress] = true;
+        TokenRoyaltyAdapter(n_royaltyAdapter).initilize(linkToken, oracle, jobId, _royaltySaleAddress, msg.sender);
         emit AdapterCreated(n_royaltyAdapter, _adapterId);
         }
         

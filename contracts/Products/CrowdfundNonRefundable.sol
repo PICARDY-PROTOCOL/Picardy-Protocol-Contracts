@@ -39,8 +39,8 @@ contract CrowdfundNonRefundable is Ownable {
         uint amount;
     }
 
-    mapping (address => Funder) funderMap;
-    mapping (address => bool) isFunder;
+    mapping (address => Funder) public funderMap;
+    mapping (address => bool) public isFunder;
 
     constructor (address _creator, address _fundFactory, uint _fundGoal, uint _fundingTime){
         
