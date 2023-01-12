@@ -36,10 +36,13 @@ describe("nftRoyaltyAdapter", async function () {
   let nftRoyaltySaleFactory;
   let nftRoyaltySaleAddress;
   let nftRoyaltyAdapter;
+  let payMaster;
 
   beforeEach(async () => {
     const [hubAdmin, royaltyAddress, user1, user2, user3] =
       await ethers.getSigners();
+
+    let ticker = "ETH";
 
     const LinkToken = await ethers.getContractFactory("MocLink");
     tokenContract = await LinkToken.deploy();
@@ -47,6 +50,9 @@ describe("nftRoyaltyAdapter", async function () {
 
     const PicardyHub = await ethers.getContractFactory("PicardyHub");
     picardyHub = await PicardyHub.deploy();
+
+    const PayMaster = await ethers.getContractFactory("PayMaster");
+    payMaster = await PayMaster.deploy(picardyHub.address);
 
     const NftRoyaltySaleImpl = await hre.ethers.getContractFactory(
       "NftRoyaltySale"
@@ -93,12 +99,13 @@ describe("nftRoyaltyAdapter", async function () {
       oracleAddress,
       jobId,
       await nftRoyaltyAdapterImp.address,
-      await tokenRoyaltyAdapterImp.address
+      await tokenRoyaltyAdapterImp.address,
+      payMaster.address
     );
 
     const tx = await royaltyAdapterFactory
       .connect(user1)
-      .createAdapter(nftRoyaltySaleAddress, 0);
+      .createAdapter(nftRoyaltySaleAddress, 0, ticker);
 
     const receipt = await tx.wait();
 
@@ -185,10 +192,13 @@ describe("TokenRoyaltyAdapter", async function () {
   let tokenRoyaltySaleAddress;
   let nftRoyaltyAdapterImp;
   let tokenRoyaltyAdapter;
+  let payMaster;
 
   beforeEach(async () => {
     const [hubAdmin, royaltyAddress, user1, user2, user3] =
       await ethers.getSigners();
+
+    let ticker = "ETH";
 
     const LinkToken = await ethers.getContractFactory("MocLink");
     tokenContract = await LinkToken.deploy();
@@ -196,6 +206,9 @@ describe("TokenRoyaltyAdapter", async function () {
 
     const PicardyHub = await ethers.getContractFactory("PicardyHub");
     picardyHub = await PicardyHub.deploy();
+
+    const PayMaster = await ethers.getContractFactory("PayMaster");
+    payMaster = await PayMaster.deploy(picardyHub.address);
 
     const TokenRoyaltySaleImpl = await hre.ethers.getContractFactory(
       "TokenRoyaltySale"
@@ -243,12 +256,13 @@ describe("TokenRoyaltyAdapter", async function () {
       oracleAddress,
       jobId,
       await nftRoyaltyAdapterImp.address,
-      await tokenRoyaltyAdapterImp.address
+      await tokenRoyaltyAdapterImp.address,
+      payMaster.address
     );
 
     const tx = await royaltyAdapterFactory
       .connect(user1)
-      .createAdapter(tokenRoyaltySaleAddress, 1);
+      .createAdapter(tokenRoyaltySaleAddress, 1, ticker);
 
     const receipt = await tx.wait();
 

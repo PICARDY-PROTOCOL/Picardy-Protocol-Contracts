@@ -15,10 +15,11 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
 
     error OnlyKeeperRegistry();
 
-    event RoyaltyBalanceUpdated(uint time);
+    event RoyaltyBalanceUpdated(uint indexed time, uint indexed amount);
     event Received(address indexed depositor, uint indexed amount);
     event UpkeepPerformed(uint indexed time);
     event AutomationStarted(bool indexed status);
+    event RoyaltyWithdrawn(uint indexed amount, address indexed holder);
 
     enum TokenRoyaltyState{
         OPEN,
@@ -86,9 +87,9 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
     }
 
         //call this to start automtion of the royalty contract, deposit link for automation
-    function setupAutomation(address _regAddr, uint256 _updateInterval, address _royaltyAdapter) external onlyOwner {
-        
+    function setupAutomation(address _regAddr, uint256 _updateInterval, address _royaltyAdapter) external onlyOwner { 
         require (automationStarted == false, "startAutomation: automation started");
+        require(tokenRoyaltyState == TokenRoyaltyState.OPEN, "royalty Closed");
         keeperRegistryAddress = _regAddr;
         updateInterval = _updateInterval * day;
         royaltyAdapter = _royaltyAdapter;
@@ -96,7 +97,6 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
     }
 
     function _startAutomation() internal {
-        require (automationStarted == false, "startAutomation: automation started");
         automationStarted = true;
         emit AutomationStarted(true);
     }
@@ -160,20 +160,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
             royaltyBalance[poolMember] += _amount;
         }
         lastRoyaltyUpdate = block.timestamp;
-        emit RoyaltyBalanceUpdated(block.timestamp);
-    }
-
-    function ownerUpdateRoyalty(uint amount) external onlyOwner {
-        require(tokenRoyaltyState == TokenRoyaltyState.CLOSED, "royalty sale still open");
-        for(uint i = 0; i < royalty.royaltyPoolMembers.length; i++){
-            address poolMember = royalty.royaltyPoolMembers[i];
-            uint balance = IERC20(royalty.royaltyCPToken).balanceOf(poolMember);
-            uint poolSize = (balance * 100) / royalty.royaltyPoolBalance;
-            uint _amount = (poolSize * amount) / 100;
-            royaltyBalance[poolMember] += _amount;
-        }
-        lastRoyaltyUpdate = block.timestamp;
-        emit RoyaltyBalanceUpdated(block.timestamp);
+        emit RoyaltyBalanceUpdated(block.timestamp, amount);
     }
 
     function withdraw() external onlyOwner {
@@ -197,7 +184,18 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         require(royaltyBalance[msg.sender] >= _amount);
         royaltyBalance[msg.sender] - _amount;
         (bool os, ) = payable(_msgSender()).call{value: _amount}("");
+        emit RoyaltyWithdrawn(_amount, msg.sender);
         require(os);
+    }
+
+    function withdrawRoyalty2(uint _amount) external nonReentrant {
+        address tokenAddress = ITokenRoyaltyAdapter(royaltyAdapter).getTickerAddress();
+        require(IERC20(tokenAddress).balanceOf(address(this)) >= _amount, "low balance");
+        require(royaltyBalance[msg.sender] >= _amount, "Insufficient balance");
+        royaltyBalance[msg.sender] -= _amount;
+        (bool os) = IERC20(tokenAddress).transfer(msg.sender, _amount);
+        require(os);
+        emit RoyaltyWithdrawn(_amount, msg.sender);
     }
 
     function changeRoyaltyState() external onlyOwner{
@@ -266,8 +264,22 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         tokenRoyaltyState = TokenRoyaltyState.OPEN;
     }
 
+    function _update(uint amount) internal {
+        require(tokenRoyaltyState == TokenRoyaltyState.CLOSED, "royalty sale still open");
+        for(uint i = 0; i < royalty.royaltyPoolMembers.length; i++){
+            address poolMember = royalty.royaltyPoolMembers[i];
+            uint balance = IERC20(royalty.royaltyCPToken).balanceOf(poolMember);
+            uint poolSize = (balance * 100) / royalty.royaltyPoolBalance;
+            uint _amount = (poolSize * amount) / 100;
+            royaltyBalance[poolMember] += _amount;
+        }
+        lastRoyaltyUpdate = block.timestamp;
+        
+        emit RoyaltyBalanceUpdated(block.timestamp, msg.value);
+    }
+
     receive() external payable {
-        emit Received(msg.sender, msg.value);
+        _update(msg.value);
     }
 }
 

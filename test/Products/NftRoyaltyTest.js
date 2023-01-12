@@ -179,20 +179,10 @@ describe("NftRoyaltySale", function () {
     await nftRoyaltySale.connect(user3).buyRoyalty(2, { value: updateAmount });
 
     await expect(
-      nftRoyaltySale.ownerUpdateRoyalty(updateAmount)
-    ).to.be.rejectedWith(Error);
-
-    await expect(
       nftRoyaltySale.connect(user2).toggleRoyaltSale()
     ).to.be.rejectedWith(Error);
 
     await nftRoyaltySale.toggleRoyaltSale();
-
-    await expect(
-      nftRoyaltySale.connect(user2).ownerUpdateRoyalty(updateAmount)
-    ).to.be.rejectedWith(Error);
-
-    await nftRoyaltySale.ownerUpdateRoyalty(updateAmount);
   });
   //it: owner can pause and unpause the base NFT contract
   it("owner can pause and unpause the base NFT contract", async () => {
@@ -270,8 +260,6 @@ describe("NftRoyaltySale", function () {
       .buyRoyalty(15, { value: ethers.utils.parseUnits("15", "ether") });
 
     await nftRoyaltySale.toggleRoyaltSale();
-
-    await nftRoyaltySale.ownerUpdateRoyalty(updateAmount);
 
     await user1.sendTransaction({
       to: nftRoyaltySale.address,

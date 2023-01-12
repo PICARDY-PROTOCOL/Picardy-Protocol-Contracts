@@ -21,6 +21,7 @@ contract RoyaltyAdapterFactory is Context, ReentrancyGuard{
     address tokenRoyaltyAdapterImplimentation;
     
     address public picardyHub;
+    address public payMaster;
     address private linkToken;
     address oracle;
     string jobId;
@@ -41,8 +42,9 @@ contract RoyaltyAdapterFactory is Context, ReentrancyGuard{
         _;
     }
 
-    constructor (address _picardyHub, address _linkToken, address _oracle, string memory _jobId, address _nftRoyaltyAdapterImp, address _tokenRoyaltyAdapterImpl){
+    constructor (address _picardyHub, address _linkToken, address _oracle, string memory _jobId, address _nftRoyaltyAdapterImp, address _tokenRoyaltyAdapterImpl, address _payMaster){
         picardyHub = _picardyHub;
+        payMaster = _payMaster;
         linkToken = _linkToken;
         oracle = _oracle;
         nftRoyaltyAdapterImplimentation = _nftRoyaltyAdapterImp;
@@ -52,7 +54,7 @@ contract RoyaltyAdapterFactory is Context, ReentrancyGuard{
 
     // Royalty Type 0 = NFT Royalty
     // Royalty Type 1 = Token Royalty
-    function createAdapter(address _royaltySaleAddress, uint royaltyType) external nonReentrant{
+    function createAdapter(address _royaltySaleAddress, uint royaltyType, string memory _ticker) external nonReentrant{
          uint256 _adapterId = adapterId;
         
         if (royaltyType == 0){
@@ -63,7 +65,7 @@ contract RoyaltyAdapterFactory is Context, ReentrancyGuard{
         adapterDetails[_royaltySaleAddress] = n_adapterDetails;
         adapterId++;
         adapterExixt[_royaltySaleAddress] = true;
-        RoyaltyAdapter(n_royaltyAdapter).initilize(linkToken, oracle, jobId, _royaltySaleAddress, msg.sender);
+        RoyaltyAdapter(n_royaltyAdapter).initilize(linkToken, oracle, jobId, _ticker, _royaltySaleAddress, msg.sender, payMaster);
         emit AdapterCreated(n_royaltyAdapter, _adapterId);
         } else if(royaltyType == 1){
         
@@ -74,7 +76,7 @@ contract RoyaltyAdapterFactory is Context, ReentrancyGuard{
         adapterDetails[_royaltySaleAddress] = n_adapterDetails;
         adapterId++;
         adapterExixt[_royaltySaleAddress] = true;
-        TokenRoyaltyAdapter(n_royaltyAdapter).initilize(linkToken, oracle, jobId, _royaltySaleAddress, msg.sender);
+        TokenRoyaltyAdapter(n_royaltyAdapter).initilize(linkToken, oracle, jobId, _ticker, _royaltySaleAddress, msg.sender, payMaster);
         emit AdapterCreated(n_royaltyAdapter, _adapterId);
         }
         

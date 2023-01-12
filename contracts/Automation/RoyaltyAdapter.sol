@@ -5,6 +5,7 @@ import "@chainlink/contracts/src/v0.8/ChainlinkClient.sol";
 //import "@chainlink/contracts/src/v0.8/ConfirmedOwner.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IPicardyNftRoyaltySale} from "../Products/NftRoyaltySale.sol";
+import {IPayMaster} from "../Automation/PayMaster.sol";
 
 contract RoyaltyAdapter is ChainlinkClient {
     using Chainlink for Chainlink.Request;
@@ -70,7 +71,7 @@ contract RoyaltyAdapter is ChainlinkClient {
         recordChainlinkFulfillment(_requestId)
     {
         emit RoyaltyData(_requestId, amount);
-        IPicardyNftRoyaltySale(royaltySaleAddress).updateRoyalty(amount);
+        IPayMaster(payMaster).sendPayment(address(this), ticker, amount);
         // Call the update royalty balance on the royalty sale contract
     }
 
@@ -79,6 +80,9 @@ contract RoyaltyAdapter is ChainlinkClient {
         IPicardyNftRoyaltySale(royaltySaleAddress).updateRoyalty(_amount);
     }
 
+    function getTickerAddress() public view returns(address) {
+        return IPayMaster(payMaster).getTokenAddress(ticker);
+    }
 
     function contractBalances()
         public
@@ -157,6 +161,8 @@ contract RoyaltyAdapter is ChainlinkClient {
 interface IRoyaltyAdapter{
     function requestRoyaltyAmount() external;
     function getRoyaltySaleAddress() external view returns (address);
+    function getTickerAddress() external view returns(address);
+    function updateRoyalty(uint _amount) external;
 }
 
 

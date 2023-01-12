@@ -165,22 +165,6 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         lastRoyaltyUpdate = block.timestamp;
         emit RoyaltyUpdated(_amount);
     }
-
-    function ownerUpdateRoyalty(uint256 _amount) external onlyOwner{ 
-        require(automationStarted == false, "royalty update automated");
-        require(nftRoyaltyState == NftRoyaltyState.CLOSED, "royalty sale still open");
-       uint saleCount = PicardyNftBase(nftRoyaltyAddress).getSaleCount();
-        uint valuePerNft = _amount / saleCount;
-        address[] memory holders = PicardyNftBase(nftRoyaltyAddress).getHolders();
-        for(uint i; i < holders.length; i++){
-            uint balance = valuePerNft * nftBalance[holders[i]];
-            royaltyBalance[holders[i]] += balance;
-        }
-
-        lastRoyaltyUpdate = block.timestamp;
-        emit RoyaltyUpdated(_amount);
-    }
-
     // TODO: add the pending balance function to be called by payMaster
 
     function toggleRoyaltSale() external onlyOwner {
@@ -243,6 +227,16 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         emit RoyaltyWithdrawn(_amount, msg.sender);
     }
 
+    function withdrawRoyalty2(uint _amount) external nonReentrant {
+        address tokenAddress = IRoyaltyAdapter(royaltyAdapter).getTickerAddress();
+        require(IERC20(tokenAddress).balanceOf(address(this)) >= _amount, "low balance");
+        require(royaltyBalance[msg.sender] >= _amount, "Insufficient balance");
+        royaltyBalance[msg.sender] -= _amount;
+        (bool os) = IERC20(tokenAddress).transfer(msg.sender, _amount);
+        require(os);
+        emit RoyaltyWithdrawn(_amount, msg.sender);
+    }
+
     function pause() public onlyOwner {
         _pause();
     }
@@ -283,8 +277,22 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         nftRoyaltyAddress = address(newPicardyNft);
     }
 
+    function _update(uint _amount) internal {
+        require(nftRoyaltyState == NftRoyaltyState.CLOSED, "royalty sale still open");
+        uint saleCount = PicardyNftBase(nftRoyaltyAddress).getSaleCount();
+        uint valuePerNft = _amount / saleCount;
+        address[] memory holders = PicardyNftBase(nftRoyaltyAddress).getHolders();
+        for(uint i; i < holders.length; i++){
+            uint balance = valuePerNft * nftBalance[holders[i]];
+            royaltyBalance[holders[i]] += balance;
+        }
+
+        lastRoyaltyUpdate = block.timestamp;
+        emit RoyaltyUpdated(_amount);
+    }
+
     receive() external payable {
-        emit Received(msg.sender, msg.value);
+        _update(msg.value);
     }
 
 }

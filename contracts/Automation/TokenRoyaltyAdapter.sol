@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@chainlink/contracts/src/v0.8/ConfirmedOwner.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IPicardyTokenRoyaltySale} from "../Products/TokenRoyaltySale.sol";
+import {IPayMaster} from "../Automation/PayMaster.sol";
 
 contract TokenRoyaltyAdapter is ChainlinkClient {
     using Chainlink for Chainlink.Request;
@@ -73,6 +74,10 @@ contract TokenRoyaltyAdapter is ChainlinkClient {
     function updateRoyalty(uint _amount) public {
         require(msg.sender == payMaster, "royalty adapter: Un-Auth");
         IPicardyTokenRoyaltySale(royaltySaleAddress).updateRoyalty(_amount);
+    }
+
+    function getTickerAddress() public view returns(address) {
+        return IPayMaster(payMaster).getTokenAddress(ticker);
     }
 
 
@@ -151,6 +156,8 @@ contract TokenRoyaltyAdapter is ChainlinkClient {
 interface ITokenRoyaltyAdapter{
     function requestRoyaltyAmount() external;
     function getRoyaltySaleAddress() external view returns (address);
+    function getTickerAddress() external view returns(address);
+    function updateRoyalty(uint _amount) external;
 }
 
 

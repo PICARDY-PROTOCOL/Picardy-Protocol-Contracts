@@ -96,26 +96,6 @@ describe("TokenRoyaltyTest", function () {
     });
   });
 
-  // it: only royalty adapter and owner can update royalty, create royalty token from factroy
-  it("owner can update royalty", async () => {
-    const [hubAdmin, royaltyAddress, user1, user2, user3] =
-      await ethers.getSigners();
-
-    await expect(
-      tokenRoyaltySale.connect(user2).ownerUpdateRoyalty(royaltyAmount)
-    ).to.be.rejectedWith(Error);
-
-    const tx = await tokenRoyaltySale.ownerUpdateRoyalty(royaltyAmount);
-    const receipt = await tx.wait();
-
-    const events = [];
-    for (let item of receipt.events) {
-      events.push(item.event);
-    }
-
-    expect(events).to.include("RoyaltyBalanceUpdated");
-  });
-
   // it: only owner can withdraw; test royalty state change, create royalty token from factroy
   it("only owner can withdraw", async () => {
     const amount1 = ethers.utils.parseUnits("5", "ether");
@@ -177,16 +157,6 @@ describe("TokenRoyaltyTest", function () {
     });
 
     await tokenRoyaltySale.changeRoyaltyState();
-
-    const tx = await tokenRoyaltySale.ownerUpdateRoyalty(royaltyAmount);
-    const receipt = await tx.wait();
-
-    const events = [];
-    for (let item of receipt.events) {
-      events.push(item.event);
-    }
-
-    expect(events).to.include("RoyaltyBalanceUpdated");
 
     await user1.sendTransaction({
       to: tokenRoyaltySale.address,
