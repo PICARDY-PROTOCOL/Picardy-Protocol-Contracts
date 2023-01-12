@@ -41,7 +41,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
     }
 
     Royalty royalty;
-
+    
     address public owner;
     address private keeperRegistryAddress;
     address private royaltyAdapter;
@@ -85,7 +85,6 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         require(tokenRoyaltyState == TokenRoyaltyState.CLOSED);
         _start();
     }
-
         //call this to start automtion of the royalty contract, deposit link for automation
     function setupAutomation(address _regAddr, uint256 _updateInterval, address _royaltyAdapter) external onlyOwner { 
         require (automationStarted == false, "startAutomation: automation started");
@@ -93,13 +92,10 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         keeperRegistryAddress = _regAddr;
         updateInterval = _updateInterval * day;
         royaltyAdapter = _royaltyAdapter;
-        _startAutomation();
-    }
-
-    function _startAutomation() internal {
         automationStarted = true;
         emit AutomationStarted(true);
     }
+
 
     function toggleAutomation() external onlyOwner{
         automationStarted = !automationStarted;
@@ -188,14 +184,16 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         require(os);
     }
 
-    function withdrawRoyalty2(uint _amount) external nonReentrant {
+    function withdrawRoyaltyERC(uint _amount) external nonReentrant {
+        require (automationStarted == true, "automation not started");
+        require(tokenRoyaltyState == TokenRoyaltyState.CLOSED, "royalty still open");
         address tokenAddress = ITokenRoyaltyAdapter(royaltyAdapter).getTickerAddress();
         require(IERC20(tokenAddress).balanceOf(address(this)) >= _amount, "low balance");
         require(royaltyBalance[msg.sender] >= _amount, "Insufficient balance");
         royaltyBalance[msg.sender] -= _amount;
         (bool os) = IERC20(tokenAddress).transfer(msg.sender, _amount);
         require(os);
-        emit RoyaltyWithdrawn(_amount, msg.sender);
+        emit RoyaltyWithdrawn(_amount, msg.sender);  
     }
 
     function changeRoyaltyState() external onlyOwner{
@@ -324,5 +322,7 @@ interface IPicardyTokenRoyaltySale {
 
     /// @notice withdraws the royalty balance
     function withdrawRoyalty(uint _amount) external;
+
+    function withdrawRoyalty2(uint _amount) external;
 
 }

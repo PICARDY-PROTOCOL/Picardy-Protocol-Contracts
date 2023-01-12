@@ -106,8 +106,7 @@ contract PayMaster {
                     require (success);
                 }    
             }
-        }
-      
+        } 
     }
 
     function getRoyaltyReserve(address _adapter, string memory _ticker) public view returns (uint256) {

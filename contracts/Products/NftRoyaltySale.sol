@@ -219,6 +219,7 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
     }
 
     function withdrawRoyalty(uint _amount) external nonReentrant {
+        require(nftRoyaltyState == NftRoyaltyState.CLOSED, "royalty sale still open");
         require(address(this).balance >= _amount, "Insufficient funds");
         require(royaltyBalance[msg.sender] >= _amount, "Insufficient balance");
         royaltyBalance[msg.sender] -= _amount;
@@ -227,7 +228,9 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         emit RoyaltyWithdrawn(_amount, msg.sender);
     }
 
-    function withdrawRoyalty2(uint _amount) external nonReentrant {
+    function withdrawRoyaltyERC(uint _amount) external nonReentrant {
+        require (automationStarted == true, "automation not started");
+        require(nftRoyaltyState == NftRoyaltyState.CLOSED, "royalty sale still open");
         address tokenAddress = IRoyaltyAdapter(royaltyAdapter).getTickerAddress();
         require(IERC20(tokenAddress).balanceOf(address(this)) >= _amount, "low balance");
         require(royaltyBalance[msg.sender] >= _amount, "Insufficient balance");

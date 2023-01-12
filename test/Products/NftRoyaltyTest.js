@@ -270,8 +270,6 @@ describe("NftRoyaltySale", function () {
       nftRoyaltySale.connect(user2).withdrawRoyalty()
     ).to.be.rejectedWith(Error);
 
-    await nftRoyaltySale.toggleRoyaltSale();
-
     await nftRoyaltySale
       .connect(user2)
       .withdrawRoyalty(await nftRoyaltySale.royaltyBalance(user2.address));
