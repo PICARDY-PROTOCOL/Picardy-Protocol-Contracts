@@ -9,8 +9,8 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/utils/Context.sol";
 import {IPicardyHub} from "../PicardyHub.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
-import "../Chainlink/royaltyAdapter.sol";
-import "../Chainlink/tokenRoyaltyAdapter.sol";
+import "../Automation/RoyaltyAdapter.sol";
+import "../Automation/TokenRoyaltyAdapter.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract RoyaltyAdapterFactory is Context, ReentrancyGuard{
@@ -50,6 +50,8 @@ contract RoyaltyAdapterFactory is Context, ReentrancyGuard{
         jobId = _jobId;
     }
 
+    // Royalty Type 0 = NFT Royalty
+    // Royalty Type 1 = Token Royalty
     function createAdapter(address _royaltySaleAddress, uint royaltyType) external nonReentrant{
          uint256 _adapterId = adapterId;
         

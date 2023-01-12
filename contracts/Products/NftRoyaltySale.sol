@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "../Tokens/PicardyNftBase.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
-import {IRoyaltyAdapter} from "../Chainlink/royaltyAdapter.sol";
+import {IRoyaltyAdapter} from "../Automation/RoyaltyAdapter.sol";
 import {INftRoyaltySaleFactory} from "../Factory/NftRoyaltySaleFactory.sol";
 
 contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterface {
@@ -55,6 +55,7 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
     uint256 updateInterval;
     bool automationStarted;
     bool initialized;
+    uint day = 1 days;
 
     mapping (address => uint) nftBalance;
     mapping (address => uint) public royaltyBalance;
@@ -103,7 +104,7 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         require (automationStarted == false, "startAutomation: automation started");
         require(nftRoyaltyState == NftRoyaltyState.OPEN, "royalty sale closed");
         keeperRegistryAddress = _regAddr;
-        updateInterval = _updateInterval;
+        updateInterval = _updateInterval * day;
         royaltyAdapter = _royaltyAdapter;
         automationStarted = true;
         emit AutomationStarted(true);
@@ -179,6 +180,8 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         lastRoyaltyUpdate = block.timestamp;
         emit RoyaltyUpdated(_amount);
     }
+
+    // TODO: add the pending balance function to be called by payMaster
 
     function toggleRoyaltSale() external onlyOwner {
         if(nftRoyaltyState == NftRoyaltyState.OPEN){

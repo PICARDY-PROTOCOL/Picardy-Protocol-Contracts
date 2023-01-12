@@ -8,7 +8,7 @@ import "../Tokens/CPToken.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
-import {IRoyaltyAdapter} from "../Chainlink/royaltyAdapter.sol";
+import {ITokenRoyaltyAdapter} from "../Automation/TokenRoyaltyAdapter.sol";
 import {ITokenRoyaltySaleFactory} from "../Factory/TokenRoyaltySaleFactory.sol";
 
 contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pausable {
@@ -48,6 +48,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
     uint256 updateInterval;
     bool automationStarted;
     bool initilized;
+    uint day = 1 days;
 
   
     mapping (address => uint) royaltyBalance;
@@ -78,16 +79,6 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         _CPToken();
         initilized = true;
     }
-    // constructor (uint _royaltyPoolSize, uint _percentage, address _tokenRoyaltyFactory, address _creator, string memory _creatorsName, string memory _name){
-    //     royalty.royaltyPoolSize = _royaltyPoolSize;
-    //     royalty.percentage = _percentage;
-    //     royalty.tokenRoyaltyFactory = _tokenRoyaltyFactory;
-    //     royalty.creator = _creator;
-    //     royalty.creatorsName = _creatorsName;
-    //     royalty.name = _name;
-    //     transferOwnership(_creator);
-    //     _CPToken();
-    // }
 
     function start() external onlyOwner {
         require(tokenRoyaltyState == TokenRoyaltyState.CLOSED);
@@ -99,7 +90,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         
         require (automationStarted == false, "startAutomation: automation started");
         keeperRegistryAddress = _regAddr;
-        updateInterval = _updateInterval;
+        updateInterval = _updateInterval * day;
         royaltyAdapter = _royaltyAdapter;
         _startAutomation();
     }
@@ -109,6 +100,12 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         automationStarted = true;
         emit AutomationStarted(true);
     }
+
+    function toggleAutomation() external onlyOwner{
+        automationStarted = !automationStarted;
+    }
+
+    // TODO: add the pending balance function to be called by payMaster
 
     function buyRoyalty() external payable {
         require(tokenRoyaltyState == TokenRoyaltyState.OPEN, "Sale closed");
@@ -148,7 +145,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
     ) external override onlyKeeperRegistry {
         //(string memory artisteName, string memory name) = abi.decode(performData, (string,string));
         // call the adapter contract and get the royalty value, and update holders
-        IRoyaltyAdapter(royaltyAdapter).requestRoyaltyAmount();
+        ITokenRoyaltyAdapter(royaltyAdapter).requestRoyaltyAmount();
         emit UpkeepPerformed(block.timestamp);
     }
 
