@@ -7,6 +7,8 @@ pragma experimental ABIEncoderV2;
 
 import {IRoyaltyAdapter} from "../Automation/RoyaltyAdapter.sol";
 import {ITokenRoyaltyAdapter} from "../Automation/TokenRoyaltyAdapter.sol";
+import {IPicardyNftRoyaltySale} from "../Products/NftRoyaltySale.sol";
+import {IPicardyTokenRoyaltySale} from "../Products/TokenRoyaltySale.sol";
 import {IPicardyHub} from "../PicardyHub.sol"; 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol"; 
 
@@ -41,9 +43,9 @@ contract PayMaster {
 
     function addToken(string memory _ticker, address _tokenAddress) public {
         require(picardyHub.checkHubAdmin(msg.sender), "addToken: Un-Auth");
-        require(tokenExist[_ticker] == false, "addToken: Token already Exist");
+        require(tickerExist[_ticker] == false, "addToken: Token already Exist");
         tokenAddress[_ticker] = _tokenAddress;
-        tokenExist[_ticker] = true;
+        tickerExist[_ticker] = true;
     }
 
     function addRegAddress(address _picardyReg) external {
@@ -53,9 +55,9 @@ contract PayMaster {
 
     function removeToken(string memory _ticker) public {
         require(picardyHub.checkHubAdmin(msg.sender), "removeToken: Un-Auth");
-        require(tokenExist[_ticker] == true, "addToken: Token does not Exist");
+        require(tickerExist[_ticker] == true, "addToken: Token does not Exist");
         delete tokenAddress[_ticker];
-        delete tokenExist[_ticker];
+        delete tickerExist[_ticker];
     }
 
     function addRoyaltyData(address _adapter, address _royaltyAddress, uint royaltyType) public {
@@ -105,17 +107,15 @@ contract PayMaster {
                     require(IRoyaltyAdapter(_adapter).getRoyaltySaleAddress() == _royaltyAddress, "Royalty address invalid");
                     royaltyReserve[_adapter][_royaltyAddress][_ticker] -= _amount;
                     royaltyPaid[_adapter][_royaltyAddress][_ticker] += _amount;
-                    IRoyaltyAdapter(_adapter).updateRoyalty(_amount);
-                    (bool success) = IERC20(tokenAddress[_ticker]).transfer(_royaltyAddress, _amount);
-                    require (success);
+                    IPicardyNftRoyaltySale(_royaltyAddress).updateRoyalty(_amount);
                 } else if(royaltyType == 1){
                     require(ITokenRoyaltyAdapter(_adapter).getRoyaltySaleAddress() == _royaltyAddress, "Royalty address invalid");
                     royaltyReserve[_adapter][_royaltyAddress][_ticker] -= _amount;
                     royaltyPaid[_adapter][_royaltyAddress][_ticker] += _amount;
-                    ITokenRoyaltyAdapter(_adapter).updateRoyalty(_amount);
-                    (bool success) = IERC20(tokenAddress[_ticker]).transfer(_royaltyAddress, _amount);
-                    require (success);
-                }    
+                    IPicardyTokenRoyaltySale(_royaltyAddress).updateRoyalty(_amount);
+                }
+                (bool success) = IERC20(tokenAddress[_ticker]).transfer(_royaltyAddress, _amount);
+                require (success);    
             }
         } 
     }
@@ -139,7 +139,7 @@ contract PayMaster {
         return tokenAddress[_ticker];
     }
 
-    function getPicardyReg() external returns(address){
+    function getPicardyReg() external view returns(address){
         return regAddress;
     }
 

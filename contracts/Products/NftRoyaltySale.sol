@@ -155,9 +155,10 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
     */
     function updateRoyalty(uint256 _amount) external {
         require(nftRoyaltyState == NftRoyaltyState.CLOSED, "royalty sale still open");
-        require (msg.sender == royaltyAdapter, "Update royalty: unAuth");
+        address payMaster = IRoyaltyAdapter(royaltyAdapter).getPayMaster();
+        require (msg.sender == payMaster, "updateRoyalty: Un-auth");
         require (automationStarted == true, "automation not setup");
-       uint saleCount = PicardyNftBase(nftRoyaltyAddress).getSaleCount();
+        uint saleCount = PicardyNftBase(nftRoyaltyAddress).getSaleCount();
         uint valuePerNft = _amount / saleCount;
         address[] memory holders = PicardyNftBase(nftRoyaltyAddress).getHolders();
         for(uint i; i < holders.length; i++){

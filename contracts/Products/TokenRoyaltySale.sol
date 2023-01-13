@@ -86,7 +86,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         _start();
     }
         //call this to start automtion of the royalty contract, deposit link for automation
-    function setupAutomation(address _regAddr, uint256 _updateInterval, address _royaltyAdapter) external onlyOwner { 
+    function setupAutomation(address _regAddr, uint256 _updateInterval, address _royaltyAdapter) external { 
         require(msg.sender == ITokenRoyaltyAdapter(_royaltyAdapter).getPicardyReg(), "setupAutomation: only picardy reg");
         require (automationStarted == false, "startAutomation: automation started");
         require(tokenRoyaltyState == TokenRoyaltyState.OPEN, "royalty Closed");
@@ -147,8 +147,9 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
     }
 
     function updateRoyalty(uint amount) external {
-        require (msg.sender == royaltyAdapter, "updateRoyalty: Un-auth");
         require(tokenRoyaltyState == TokenRoyaltyState.CLOSED, "royalty sale still open");
+        address payMaster = ITokenRoyaltyAdapter(royaltyAdapter).getPayMaster();
+        require (msg.sender == payMaster, "updateRoyalty: Un-auth");
         for(uint i = 0; i < royalty.royaltyPoolMembers.length; i++){
             address poolMember = royalty.royaltyPoolMembers[i];
             uint balance = IERC20(royalty.royaltyCPToken).balanceOf(poolMember);
@@ -314,9 +315,9 @@ interface IPicardyTokenRoyaltySale {
     function getTokenDetails() external view returns(string memory, string memory);
 
     /// @notice updates the royalty balance
-   function updateRoyalty(uint amount) external;
+    function updateRoyalty(uint amount) external;
 
-   function getCreator() external view returns (address);
+    function getCreator() external view returns (address);
 
     /// @notice withdraws the royalty contract balance
     function withdraw() external;
@@ -325,5 +326,7 @@ interface IPicardyTokenRoyaltySale {
     function withdrawRoyalty(uint _amount) external;
 
     function withdrawRoyalty2(uint _amount) external;
+
+    function setupAutomation(address _regAddr, uint256 _updateInterval, address _royaltyAdapter) external;
 
 }

@@ -78,11 +78,6 @@ contract RoyaltyAdapter is ChainlinkClient {
         // Call the update royalty balance on the royalty sale contract
     }
 
-    function updateRoyalty(uint _amount) public {
-        require(msg.sender == payMaster, "royalty adapter: Un-Auth");
-        IPicardyNftRoyaltySale(royaltySaleAddress).updateRoyalty(_amount);
-    }
-
     function getTickerAddress() public view returns(address) {
         return IPayMaster(payMaster).getTokenAddress(ticker);
     }
@@ -114,6 +109,10 @@ contract RoyaltyAdapter is ChainlinkClient {
         return royaltySaleAddress;
     }
 
+    function getPayMaster() external view returns(address){
+        return payMaster;
+    }
+
     function getChainlinkToken() public view returns (address) {
         return chainlinkTokenAddress();
     }
@@ -136,12 +135,7 @@ contract RoyaltyAdapter is ChainlinkClient {
         bytes4 _callbackFunctionId,
         uint256 _expiration
     ) public onlyOwner {
-        cancelChainlinkRequest(
-            _requestId,
-            _payment,
-            _callbackFunctionId,
-            _expiration
-        );
+        cancelChainlinkRequest(_requestId, _payment, _callbackFunctionId, _expiration);
     }
 
     function stringToBytes32(string memory source)
@@ -171,6 +165,7 @@ interface IRoyaltyAdapter{
     function getTickerAddress() external view returns(address);
     function updateRoyalty(uint _amount) external;
     function getPicardyReg() external view returns(address);
+    function getPayMaster() external view returns(address);
 }
 
 

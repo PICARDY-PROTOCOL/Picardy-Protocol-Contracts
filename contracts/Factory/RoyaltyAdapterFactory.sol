@@ -62,32 +62,31 @@ contract RoyaltyAdapterFactory is Context, ReentrancyGuard{
     // Royalty Type 1 = Token Royalty
     function createAdapter(address _royaltySaleAddress, uint royaltyType, string memory _ticker) external nonReentrant returns(address){
         uint256 _adapterId = adapterId;
+        address  payable n_royaltyAdapter;
         
         if (royaltyType == 0){
         require(adapterExixt[_royaltySaleAddress] == false, "Adapter Already exist");
         bytes32 salt = keccak256(abi.encodePacked(_royaltySaleAddress, block.number, block.timestamp));
-        address payable n_royaltyAdapter = payable(Clones.cloneDeterministic(nftRoyaltyAdapterImplimentation, salt));
+        n_royaltyAdapter = payable(Clones.cloneDeterministic(nftRoyaltyAdapterImplimentation, salt));
         AdapterDetails memory n_adapterDetails = AdapterDetails({adapterAddress: n_royaltyAdapter, adapterId: _adapterId});
         adapterDetails[_royaltySaleAddress] = n_adapterDetails;
         adapterId++;
         adapterExixt[_royaltySaleAddress] = true;
         RoyaltyAdapter(n_royaltyAdapter).initilize(linkToken, oracle, jobId, _ticker, _royaltySaleAddress, msg.sender, payMaster, picardyReg);
         emit AdapterCreated(n_royaltyAdapter, _adapterId);
-        return n_royaltyAdapter;
         } else if(royaltyType == 1){
         
         require(adapterExixt[_royaltySaleAddress] == false, "Adapter Already exist");
         bytes32 salt = keccak256(abi.encodePacked(_royaltySaleAddress, block.number, block.timestamp));
-        address payable n_royaltyAdapter = payable(Clones.cloneDeterministic(tokenRoyaltyAdapterImplimentation, salt));
+        n_royaltyAdapter = payable(Clones.cloneDeterministic(tokenRoyaltyAdapterImplimentation, salt));
         AdapterDetails memory n_adapterDetails = AdapterDetails({adapterAddress:n_royaltyAdapter, adapterId: _adapterId});
         adapterDetails[_royaltySaleAddress] = n_adapterDetails;
         adapterId++;
         adapterExixt[_royaltySaleAddress] = true;
         TokenRoyaltyAdapter(n_royaltyAdapter).initilize(linkToken, oracle, jobId, _ticker, _royaltySaleAddress, msg.sender, payMaster, picardyReg);
         emit AdapterCreated(n_royaltyAdapter, _adapterId);
-        return n_royaltyAdapter;
         }
-        
+        return n_royaltyAdapter;
     }
 
     function changeOracle(address _oracle) external isHubAdmin{
@@ -109,6 +108,10 @@ contract RoyaltyAdapterFactory is Context, ReentrancyGuard{
     function getAdapterDetails(address _royaltySaleAddress) external view returns(AdapterDetails memory _adapterDetails){
         return adapterDetails[_royaltySaleAddress];
     }
+
+    function getPayMaster() external view returns(address){
+        return payMaster;
+    }
 }
 
 interface IRoyaltyAdapterFactory {
@@ -123,6 +126,8 @@ interface IRoyaltyAdapterFactory {
     function changeLinkToken(address _linkToken) external;
 
     function changeJobId(string memory _jobId) external;
+
+    function getPayMaster() external view returns(address);
   
     function getAdapterDetails(address _royaltySaleAddress) external view returns(AdapterDetails memory _adapterDetails);
 
