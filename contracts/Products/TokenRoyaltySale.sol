@@ -87,6 +87,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
     }
         //call this to start automtion of the royalty contract, deposit link for automation
     function setupAutomation(address _regAddr, uint256 _updateInterval, address _royaltyAdapter) external onlyOwner { 
+        require(msg.sender == ITokenRoyaltyAdapter(_royaltyAdapter).getPicardyReg(), "setupAutomation: only picardy reg");
         require (automationStarted == false, "startAutomation: automation started");
         require(tokenRoyaltyState == TokenRoyaltyState.OPEN, "royalty Closed");
         keeperRegistryAddress = _regAddr;

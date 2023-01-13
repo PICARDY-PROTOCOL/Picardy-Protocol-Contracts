@@ -102,7 +102,7 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
 
     //call this to start automtion of the royalty contract, PS: contract needs LINK for automation to work
     function setupAutomation(address _regAddr, uint256 _updateInterval, address _royaltyAdapter) external {
-        require(msg.sender == IRoyaltyAdapter(_royaltyAdapter).getPicardyReg(), "setupAutomation: only picardy register");
+        require(msg.sender == IRoyaltyAdapter(_royaltyAdapter).getPicardyReg(), "setupAutomation: only picardy reg");
         require(automationStarted == false, "startAutomation: automation started");
         require(nftRoyaltyState == NftRoyaltyState.OPEN, "royalty sale closed");
         keeperRegistryAddress = _regAddr;

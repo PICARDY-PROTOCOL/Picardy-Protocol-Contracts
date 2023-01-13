@@ -15,6 +15,7 @@ contract PayMaster {
     event PaymentPending(address indexed royaltyAddress, string indexed ticker, uint indexed amount);
 
     IPicardyHub public picardyHub;
+    address private regAddress;
 
     mapping (address => mapping (address => mapping ( string => uint256))) public royaltyReserve; // reoyaltyAdapter -> royaltyAddress -> ticker = royaltyReserve
     mapping (address => mapping (address => mapping ( string => uint256))) public royaltyPending; // reoyaltyAdapter -> royaltyAddress -> ticker = royaltyPending
@@ -23,6 +24,7 @@ contract PayMaster {
     mapping (address => mapping (address => bool)) public isRegistered; // royaltyAdapter -> royaltyAddress = isRegistered
     mapping (address => RoyaltyData) public royaltyData; // royaltyAdapter = RoyaltyData
     mapping (string => address) public tokenAddress;
+    mapping (string => bool) tickerExist;
 
     struct RoyaltyData {
         address adapter;
@@ -39,17 +41,26 @@ contract PayMaster {
 
     function addToken(string memory _ticker, address _tokenAddress) public {
         require(picardyHub.checkHubAdmin(msg.sender), "addToken: Un-Auth");
+        require(tokenExist[_ticker] == false, "addToken: Token already Exist");
         tokenAddress[_ticker] = _tokenAddress;
+        tokenExist[_ticker] = true;
+    }
+
+    function addRegAddress(address _picardyReg) external {
+        require(picardyHub.checkHubAdmin(msg.sender), "addToken: Un-Auth");
+        regAddress = _picardyReg;
     }
 
     function removeToken(string memory _ticker) public {
         require(picardyHub.checkHubAdmin(msg.sender), "removeToken: Un-Auth");
+        require(tokenExist[_ticker] == true, "addToken: Token does not Exist");
         delete tokenAddress[_ticker];
+        delete tokenExist[_ticker];
     }
 
     function addRoyaltyData(address _adapter, address _royaltyAddress, uint royaltyType) public {
+        require(msg.sender == regAddress, "addRoyaltyData: only picardyReg");
         require(isRegistered[_adapter][_royaltyAddress] == false, "addRoyaltyData: Already registered");
-        // add a check for caller to be registry contract
         royaltyData[_adapter] = RoyaltyData(_adapter, payable(_royaltyAddress), royaltyType);
         isRegistered[_adapter][_royaltyAddress] = true;
     }
@@ -128,6 +139,14 @@ contract PayMaster {
         return tokenAddress[_ticker];
     }
 
+    function getPicardyReg() external returns(address){
+        return regAddress;
+    }
+
+    function checkTickerExist(string memory _ticker) external view returns(bool){
+        return tickerExist[_ticker];
+    }
+
 }
 
 interface IPayMaster {
@@ -138,4 +157,5 @@ interface IPayMaster {
     function addRoyaltyReserve(address _adapter,string memory _ticker, uint256 _amount) external payable;
     function addRoyaltyData(address _adapter, address _royaltyAddress, uint royaltyType) external;
     function sendPayment(address _adapter, string memory _ticker, uint256 _amount) external;
+    function checkTickerExist(string memory _ticker) external view returns(bool);
 }

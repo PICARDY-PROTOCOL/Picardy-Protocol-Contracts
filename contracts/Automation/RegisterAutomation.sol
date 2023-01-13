@@ -26,9 +26,10 @@ contract RegisterAutomation {
 
     struct RegisteredDetails{
     address payable royaltyAddress;
+    address adapterAddress;
     address adminAddress;
     uint upkeepId;
-    uint tokenType;
+    uint royaltyType;
     }
     
     address public link;
@@ -43,9 +44,9 @@ contract RegisterAutomation {
     mapping (string => bool) tickerExists;
 
     constructor(
-        address _link,
-        address _registrar,
-        address _registry,
+        address _link, //get fromchainlink docs
+        address _registrar, //get from chainlink docs
+        address _registry, //get from chainlink docs
         address _adapterFactory,
         address _picardyHub,
         address _payMaster
@@ -64,10 +65,10 @@ contract RegisterAutomation {
 
     function register(
         string memory name,
-         string memory ticker,
-        bytes calldata encryptedEmail,
+        string memory ticker,
+        string calldata email,
         address royaltyAddress,
-        uint tokenType,
+        uint royaltyType,
         uint updateInterval,
         uint32 gasLimit,
         address adminAddress,
@@ -76,61 +77,57 @@ contract RegisterAutomation {
         uint8 source
     ) public {
 
+        bytes memory encryptedEmail = abi.encode(email);
+        IPayMaster i_payMaster = IPayMaster(payMaster);
         LinkTokenInterface i_link = LinkTokenInterface(link);
         AutomationRegistryInterface i_registry = AutomationRegistryInterface(
             registry
         );
-        require(tickerExists[ticker] == true, "Ticker not accepted");
+        
+        require(i_payMaster.checkTickerExist(ticker), "Ticker not accepted");
 
-        if (tokenType == 0){
+        if (tokenType == 0){   
             IPicardyNftRoyaltySale royalty = IPicardyNftRoyaltySale(royaltyAddress);
-            address royaltyAdapter = IRoyaltyAdapterFactory(adapterFactory).createRoyaltyAdapter(royaltyAddress,tokenType, ticker);
+            address royaltyAdapter = IRoyaltyAdapterFactory(adapterFactory).createAdapter(royaltyAddress,royaltyType, ticker);
             royalty.setupAutomation(registry, updateInterval, royaltyAdapter);
+            i_payMaster.addRoyaltyData(royaltyAdapter, royaltyAddress, royaltyType);
+            
+            (State memory state, Config memory _c, address[] memory _k) = i_registry.getState();
+            uint256 oldNonce = state.nonce;
+            bytes memory payload = abi.encode( name, encryptedEmail, royaltyAddress, gasLimit, adminAddress, "0x", amount, 0, address(this));
+
+            i_link.transferAndCall(registrar, amount, bytes.concat(registerSig, payload));
+            (state, _c, _k) = i_registry.getState();
+            uint256 newNonce = state.nonce;
+            if (newNonce == oldNonce + 1) {
+                uint256 upkeepID = uint256(keccak256(abi.encodePacked( blockhash(block.number - 1), address(i_registry), uint32(oldNonce))));
+                RegisteredDetails i_registeredDetails = RegisteredDetails(royaltyAddress, royaltyAdapter, adminAddress, upkeepID, royaltyType);
+                registeredDetails[royaltyAddress] = i_registeredDetails;
+            } else {
+                revert("auto-approve disabled");
+            }
         }
         else if (tokenType == 1){
-            IPicardyTokenRoyaltySale royalty = IPicardyTokenRoyaltySale(royaltyAddress);
-            address royaltyAdapter = IRoyaltyAdapterFactory(adapterFactory).createRoyaltyAdapter(royaltyAddress,tokenType, ticker);
+            IPicardyNftRoyaltySale royalty = IPicardyTokenRoyaltySale(royaltyAddress);
+            address royaltyAdapter = ITokenRoyaltyAdapterFactory(adapterFactory).createAdapter(royaltyAddress,royaltyType, ticker);
             royalty.setupAutomation(registry, updateInterval, royaltyAdapter);
-        }
-        else{
-            revert("Invalid token type");
-        }
+            i_payMaster.addRoyaltyData(royaltyAdapter, royaltyAddress, royaltyType);
+            
+            (State memory state, Config memory _c, address[] memory _k) = i_registry.getState();
+            uint256 oldNonce = state.nonce;
+            bytes memory payload = abi.encode( name, encryptedEmail, royaltyAddress, gasLimit, adminAddress, "0x", amount, 0, address(this));
 
-        (State memory state, Config memory _c, address[] memory _k) = i_registry
-            .getState();
-        uint256 oldNonce = state.nonce;
-        bytes memory payload = abi.encode(
-            name,
-            encryptedEmail,
-            royaltyAddress,
-            gasLimit,
-            adminAddress,
-            checkData,
-            amount,
-            source,
-            address(this)
-        );
-
-        i_link.transferAndCall(
-            registrar,
-            amount,
-            bytes.concat(registerSig, payload)
-        );
-        (state, _c, _k) = i_registry.getState();
-        uint256 newNonce = state.nonce;
-        if (newNonce == oldNonce + 1) {
-            uint256 upkeepID = uint256(
-                keccak256(
-                    abi.encodePacked(
-                        blockhash(block.number - 1),
-                        address(i_registry),
-                        uint32(oldNonce)
-                    )
-                )
-            );
-            // DEV - Use the upkeepID however you see fit
-        } else {
-            revert("auto-approve disabled");
+            i_link.transferAndCall( registrar, amount, bytes.concat(registerSig, payload));
+            (state, _c, _k) = i_registry.getState();
+            uint256 newNonce = state.nonce;
+            if (newNonce == oldNonce + 1) {
+                uint256 upkeepID = uint256( keccak256( abi.encodePacked( blockhash(block.number - 1), address(i_registry), uint32(oldNonce))));
+                RegisteredDetails i_registeredDetails = RegisteredDetails(royaltyAddress, royaltyAdapter, adminAddress, upkeepID, royaltyType);
+                registeredDetails[royaltyAddress] = i_registeredDetails;
+            } else {
+                revert("auto-approve disabled");
+            }
         }
+  
     }
 }
