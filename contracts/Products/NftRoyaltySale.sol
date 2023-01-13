@@ -51,6 +51,7 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
     address public nftRoyaltyAddress;
     address private keeperRegistryAddress;
     address private royaltyAdapter;
+    address private picardyReg;
     uint256 lastRoyaltyUpdate;
     uint256 updateInterval;
     bool automationStarted;
@@ -100,8 +101,9 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
 
 
     //call this to start automtion of the royalty contract, PS: contract needs LINK for automation to work
-    function setupAutomation(address _regAddr, uint256 _updateInterval, address _royaltyAdapter) external onlyOwner{
-        require (automationStarted == false, "startAutomation: automation started");
+    function setupAutomation(address _regAddr, uint256 _updateInterval, address _royaltyAdapter) external {
+        require(msg.sender == IRoyaltyAdapter(_royaltyAdapter).getPicardyReg(), "setupAutomation: only picardy register");
+        require(automationStarted == false, "startAutomation: automation started");
         require(nftRoyaltyState == NftRoyaltyState.OPEN, "royalty sale closed");
         keeperRegistryAddress = _regAddr;
         updateInterval = _updateInterval * day;
@@ -318,6 +320,8 @@ interface IPicardyNftRoyaltySale {
     
     /// @dev buys royalty tokens
     function buyRoyalty(uint _mintAmount) external payable;
+
+    function setupAutomation(address _regAddr, uint256 _updateInterval, address _royaltyAdapter) external;
     
     /// @dev pause the royalty sale contract
     function pause() external ;

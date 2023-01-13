@@ -18,10 +18,11 @@ contract TokenRoyaltyAdapter is ChainlinkClient {
 
     address public owner;
     address public oracle;
-    string public jobId;
-    string public ticker;
     address public royaltySaleAddress;
     address public payMaster;
+    address picardyReg;
+    string public jobId;
+    string public ticker;
     bool public initialized;
 
     modifier onlyOwner() {
@@ -29,7 +30,7 @@ contract TokenRoyaltyAdapter is ChainlinkClient {
         _;
     }
 
-    function initilize(address _linkToken, address _oracle, string memory _jobId, string memory _ticker,  address _royaltySaleAddress, address _owner, address _payMaster) public {
+    function initilize(address _linkToken, address _oracle, string memory _jobId, string memory _ticker,  address _royaltySaleAddress, address _owner, address _payMaster, address _picardyReg) public {
         require(!initialized, "Already initialized!");
         require(IPicardyTokenRoyaltySale(_royaltySaleAddress).getCreator() == _owner, "royalty adapter: Un-Auth , not owner");
         royaltySaleAddress = _royaltySaleAddress;
@@ -37,6 +38,7 @@ contract TokenRoyaltyAdapter is ChainlinkClient {
         oracle = _oracle;
         ticker = _ticker;
         payMaster = _payMaster;
+        picardyReg = _picardyReg;
         setChainlinkToken(_linkToken);
         owner = _owner;
         initialized = true;
@@ -78,6 +80,10 @@ contract TokenRoyaltyAdapter is ChainlinkClient {
 
     function getTickerAddress() public view returns(address) {
         return IPayMaster(payMaster).getTokenAddress(ticker);
+    }
+
+     function getPicardyReg() external view returns(address){
+        return picardyReg;
     }
 
 

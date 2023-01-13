@@ -17,24 +17,27 @@ contract RoyaltyAdapter is ChainlinkClient {
 
     address public owner;
     address public oracle;
-    string public jobId;
+    address payMaster;
     address public royaltySaleAddress;
+    address public picardyReg;
+    string public jobId;
     bool public initialized;
     string public ticker;
-    address payMaster;
+    
 
     modifier onlyOwner() {
         require(msg.sender == owner, "royalty adapter: Un-Auth");
         _;
     }
 
-    function initilize(address _linkToken, address _oracle, string memory _jobId, string memory _ticker, address _royaltySaleAddress, address _owner, address _payMaster) public {
+    function initilize(address _linkToken, address _oracle, string memory _jobId, string memory _ticker, address _royaltySaleAddress, address _owner, address _payMaster, address _picardyReg) public {
         require(!initialized, "Already initialized!");
         require(IPicardyNftRoyaltySale(_royaltySaleAddress).getCreator() == _owner, "royalty adapter: Un-Auth , not owner");
         royaltySaleAddress = _royaltySaleAddress;
         jobId = _jobId;
         oracle = _oracle;
         payMaster = _payMaster;
+        picardyReg = _picardyReg;
         ticker = _ticker;
         setChainlinkToken(_linkToken);
         owner = _owner;
@@ -82,6 +85,10 @@ contract RoyaltyAdapter is ChainlinkClient {
 
     function getTickerAddress() public view returns(address) {
         return IPayMaster(payMaster).getTokenAddress(ticker);
+    }
+
+    function getPicardyReg() external view returns(address){
+        return picardyReg;
     }
 
     function contractBalances()
@@ -163,6 +170,7 @@ interface IRoyaltyAdapter{
     function getRoyaltySaleAddress() external view returns (address);
     function getTickerAddress() external view returns(address);
     function updateRoyalty(uint _amount) external;
+    function getPicardyReg() external view returns(address);
 }
 
 

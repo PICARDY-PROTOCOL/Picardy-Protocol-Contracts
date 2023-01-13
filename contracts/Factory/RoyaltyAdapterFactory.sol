@@ -54,7 +54,7 @@ contract RoyaltyAdapterFactory is Context, ReentrancyGuard{
 
     // Royalty Type 0 = NFT Royalty
     // Royalty Type 1 = Token Royalty
-    function createAdapter(address _royaltySaleAddress, uint royaltyType, string memory _ticker) external nonReentrant{
+    function createAdapter(address _royaltySaleAddress, uint royaltyType, string memory _ticker) external nonReentrant returns(address){
          uint256 _adapterId = adapterId;
         
         if (royaltyType == 0){
@@ -67,6 +67,7 @@ contract RoyaltyAdapterFactory is Context, ReentrancyGuard{
         adapterExixt[_royaltySaleAddress] = true;
         RoyaltyAdapter(n_royaltyAdapter).initilize(linkToken, oracle, jobId, _ticker, _royaltySaleAddress, msg.sender, payMaster);
         emit AdapterCreated(n_royaltyAdapter, _adapterId);
+        return n_royaltyAdapter;
         } else if(royaltyType == 1){
         
         require(adapterExixt[_royaltySaleAddress] == false, "Adapter Already exist");
@@ -78,6 +79,7 @@ contract RoyaltyAdapterFactory is Context, ReentrancyGuard{
         adapterExixt[_royaltySaleAddress] = true;
         TokenRoyaltyAdapter(n_royaltyAdapter).initilize(linkToken, oracle, jobId, _ticker, _royaltySaleAddress, msg.sender, payMaster);
         emit AdapterCreated(n_royaltyAdapter, _adapterId);
+        return n_royaltyAdapter;
         }
         
     }
@@ -101,4 +103,22 @@ contract RoyaltyAdapterFactory is Context, ReentrancyGuard{
     function getAdapterDetails(address _royaltySaleAddress) external view returns(AdapterDetails memory _adapterDetails){
         return adapterDetails[_royaltySaleAddress];
     }
+}
+
+interface IRoyaltyAdapterFactory {
+    
+    struct AdapterDetails{
+        address adapterAddress;
+        uint256 adapterId;
+    }
+
+    function changeOracle(address _oracle) external;
+
+    function changeLinkToken(address _linkToken) external;
+
+    function changeJobId(string memory _jobId) external;
+  
+    function getAdapterDetails(address _royaltySaleAddress) external view returns(AdapterDetails memory _adapterDetails);
+
+    function createAdapter(address _royaltySaleAddress, uint royaltyType, string memory _ticker) external returns(address);
 }

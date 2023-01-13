@@ -3,12 +3,10 @@ pragma solidity ^0.8.9;
 
 import {AutomationRegistryInterface, State, Config} from "@chainlink/contracts/src/v0.8/interfaces/AutomationRegistryInterface1_2.sol";
 import {LinkTokenInterface} from "@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol";
-
-/**
- * THIS IS AN EXAMPLE CONTRACT THAT USES HARDCODED VALUES FOR CLARITY.
- * THIS IS AN EXAMPLE CONTRACT THAT USES UN-AUDITED CODE.
- * DO NOT USE THIS CODE IN PRODUCTION.
- */
+import {IPicardyNftRoyaltySale} from "../Products/NftRoyaltySale.sol";
+import {IPicardyTokenRoyaltySale} from "../Products/TokenRoyaltySale.sol";
+import {IPayMaster} from "../Automation/PayMaster.sol";
+import {IRoyaltyAdapterFactory} from "../Factory/RoyaltyAdapterFactory.sol";
 
 interface KeeperRegistrarInterface {
     function register(
@@ -24,27 +22,53 @@ interface KeeperRegistrarInterface {
     ) external;
 }
 
-contract UpkeepIDConsumerExample {
+contract RegisterAutomation {
+
+    struct RegisteredDetails{
+    address payable royaltyAddress;
+    address adminAddress;
+    uint upkeepId;
+    uint tokenType;
+    }
     
-    LinkTokenInterface public immutable i_link;
-    address public immutable registrar;
-    AutomationRegistryInterface public immutable i_registry;
+    address public link;
+    address public registry;
+    address public registrar;
+    address adapterFactory;
+    address public picardyHub;
+    address public payMaster;
     bytes4 registerSig = KeeperRegistrarInterface.register.selector;
 
+    mapping (address => RegisteredDetails) public registeredDetails;
+    mapping (string => bool) tickerExists;
+
     constructor(
-        LinkTokenInterface _link,
+        address _link,
         address _registrar,
-        AutomationRegistryInterface _registry
+        address _registry,
+        address _adapterFactory,
+        address _picardyHub,
+        address _payMaster
     ) {
-        i_link = _link;
+        link = _link;
         registrar = _registrar;
-        i_registry = _registry;
+        registry = _registry;
+        adapterFactory = _adapterFactory;
     }
 
-    function registerAndPredictID(
+    function addTicker(string memory ticker) public {
+        require(tickerExists[ticker] == false, "Ticker already exists");
+        require(IPicardyHub(picardyHub).checkHubAdmin(msg.sender) == true, "Not a hub admin");
+        tickerExists[ticker] = true;
+    }
+
+    function register(
         string memory name,
+         string memory ticker,
         bytes calldata encryptedEmail,
-        address upkeepContract,
+        address royaltyAddress,
+        uint tokenType,
+        uint updateInterval,
         uint32 gasLimit,
         address adminAddress,
         bytes calldata checkData,
@@ -52,7 +76,25 @@ contract UpkeepIDConsumerExample {
         uint8 source
     ) public {
 
-        
+        LinkTokenInterface i_link = LinkTokenInterface(link);
+        AutomationRegistryInterface i_registry = AutomationRegistryInterface(
+            registry
+        );
+        require(tickerExists[ticker] == true, "Ticker not accepted");
+
+        if (tokenType == 0){
+            IPicardyNftRoyaltySale royalty = IPicardyNftRoyaltySale(royaltyAddress);
+            address royaltyAdapter = IRoyaltyAdapterFactory(adapterFactory).createRoyaltyAdapter(royaltyAddress,tokenType, ticker);
+            royalty.setupAutomation(registry, updateInterval, royaltyAdapter);
+        }
+        else if (tokenType == 1){
+            IPicardyTokenRoyaltySale royalty = IPicardyTokenRoyaltySale(royaltyAddress);
+            address royaltyAdapter = IRoyaltyAdapterFactory(adapterFactory).createRoyaltyAdapter(royaltyAddress,tokenType, ticker);
+            royalty.setupAutomation(registry, updateInterval, royaltyAdapter);
+        }
+        else{
+            revert("Invalid token type");
+        }
 
         (State memory state, Config memory _c, address[] memory _k) = i_registry
             .getState();
@@ -60,7 +102,7 @@ contract UpkeepIDConsumerExample {
         bytes memory payload = abi.encode(
             name,
             encryptedEmail,
-            upkeepContract,
+            royaltyAddress,
             gasLimit,
             adminAddress,
             checkData,
