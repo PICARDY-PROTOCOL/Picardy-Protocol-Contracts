@@ -115,6 +115,8 @@ async function main() {
   await payMaster.addRegAddress(royaltyAutomationRegistrarAddress);
   await royaltyAdapterFactory.addPicardyReg(royaltyAutomationRegistrarAddress);
 
+  // Deploy Product Factory
+
   const artisteTokenFactory = await ArtisteTokenFactory.deploy(
     picardyHubAddress
   );
@@ -145,6 +147,8 @@ async function main() {
     nftRoyaltySaleFactory: nftRoyaltySaleFactoryAddress,
     tokenRoyaltySaleFactory: tokenRoyaltySaleFactoryAddress,
     royaltyAdapterFactory: royaltyAdapterFactoryAddress,
+    payMasterAddress: payMasterAddress,
+    automationRegistrarAddress: royaltyAutomationRegistrarAddress,
 
     implimentations: {
       nftRoyaltySale: nftRoyaltyAdapterImpAddr,
@@ -159,6 +163,8 @@ async function main() {
 
   console.table({
     picardyHub: picardyHubAddress,
+    payMasterAddress: payMasterAddress,
+    automationRegistrarAddress: royaltyAutomationRegistrarAddress,
     artisteTokenFactory: artisteTokenFactoryAddress,
     nftRoyaltySaleFactory: nftRoyaltySaleFactoryAddress,
     tokenRoyaltySaleFactory: tokenRoyaltySaleFactoryAddress,
