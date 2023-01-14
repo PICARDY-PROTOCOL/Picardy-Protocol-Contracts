@@ -12,4 +12,8 @@ contracts/Factory/CrowdfundFactory.sol
 contracts/Factory/DaoFactory.sol
 contracts/Factory/PicardyVaultFactory.sol
 contracts/Factory/TimeLockFactory.sol
+contracts/Products/CrowdfundNonRefundable.sol
+contracts/Products/PicardyVault.sol
+contracts/Governance
+contract/Tokens/VSToken.sol
 
