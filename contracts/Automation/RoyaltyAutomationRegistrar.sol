@@ -26,7 +26,7 @@ interface KeeperRegistrarInterface {
 contract RoyaltyAutomationRegistrar {
 
     event AutomationRegistered(address indexed royaltyAddress);
-    event AutomationFunded(address indexed royaltyAddress, uint indexed amount);
+    event AutomationFunded(address indexed royaltyAddress, uint96 indexed amount);
     struct RegisteredDetails {
         address royaltyAddress;
         address adapterAddress;
@@ -57,8 +57,8 @@ contract RoyaltyAutomationRegistrar {
         uint8 source; 
     }
     
-    address public link;
     address public registry;
+    address public link;
     address public registrar;
     address public adapterFactory;
     address public picardyHub;
@@ -68,6 +68,10 @@ contract RoyaltyAutomationRegistrar {
     mapping (address => RegisteredDetails) public registeredDetails;
     mapping (address => bool) hasReg;
 
+    IPayMaster i_payMaster;
+    LinkTokenInterface i_link;
+    AutomationRegistryInterface i_registry;
+
     constructor(
         address _link, //get fromchainlink docs
         address _registrar, //get from chainlink docs
@@ -76,21 +80,22 @@ contract RoyaltyAutomationRegistrar {
         address _picardyHub,
         address _payMaster
     ) {
-        link = _link;
         registrar = _registrar;
-        registry = _registry;
         picardyHub = _picardyHub;
+        registry = _registry;
+        link = _link;
         payMaster = _payMaster;
         adapterFactory = _adapterFactory;
+
+        i_payMaster = IPayMaster(_payMaster);
+        i_link = LinkTokenInterface(_link);
+        i_registry = AutomationRegistryInterface(_registry);
     }
 
     function register(RegistrationDetails memory details) external {
-        require(hasReg[details.royaltyAddress] == false, "Automation already registered")
-
+        require(hasReg[details.royaltyAddress] == false, "already registered");
+        
         bytes memory encryptedEmail = abi.encode(details.email);
-        IPayMaster i_payMaster = IPayMaster(payMaster);
-        LinkTokenInterface i_link = LinkTokenInterface(link);
-        AutomationRegistryInterface i_registry = AutomationRegistryInterface(registry);
         RegisteredDetails memory i_registeredDetails = registeredDetails[details.royaltyAddress];
         address royaltyAdapter;
         
@@ -98,20 +103,44 @@ contract RoyaltyAutomationRegistrar {
 
         if (details.royaltyType == 0){   
             IPicardyNftRoyaltySale royalty = IPicardyNftRoyaltySale(details.royaltyAddress);
-            royaltyAdapter = IRoyaltyAdapterFactory(adapterFactory).createAdapter(details.royaltyAddress, details.royaltyType, details.ticker);
+            royaltyAdapter = IRoyaltyAdapterFactory(adapterFactory).createAdapter(
+                details.royaltyAddress, 
+                details.royaltyType, 
+                details.ticker
+            );
             royalty.setupAutomation(registry, details.updateInterval, royaltyAdapter);
             i_payMaster.addRoyaltyData(royaltyAdapter, details.royaltyAddress, details.royaltyType);
         }
         else if (details.royaltyType == 1){
             IPicardyTokenRoyaltySale royalty = IPicardyTokenRoyaltySale(details.royaltyAddress);
-            royaltyAdapter = IRoyaltyAdapterFactory(adapterFactory).createAdapter(details.royaltyAddress, details.royaltyType, details.ticker);
+            royaltyAdapter = IRoyaltyAdapterFactory(adapterFactory).createAdapter(
+                details.royaltyAddress, 
+                details.royaltyType, 
+                details.ticker
+            );
+
             royalty.setupAutomation(registry, details.updateInterval, royaltyAdapter);
-            i_payMaster.addRoyaltyData(royaltyAdapter, details.royaltyAddress, details.royaltyType);
+            i_payMaster.addRoyaltyData(
+                royaltyAdapter, 
+                details.royaltyAddress, 
+                details.royaltyType
+            );
         }
 
         (State memory state, Config memory _c, address[] memory _k) = i_registry.getState();
         uint256 oldNonce = state.nonce;
-        PayloadDetails memory payloadDetails = PayloadDetails(details.name, encryptedEmail, details.royaltyAddress, details.gasLimit, details.adminAddress, "0x", details.amount, 0);
+        
+        PayloadDetails memory payloadDetails = PayloadDetails(
+            details.name, 
+            encryptedEmail, 
+            details.royaltyAddress, 
+            details.gasLimit, 
+            details.adminAddress, 
+            "0x", 
+            details.amount, 
+            0
+        );
+
         bytes memory payload = _getPayload(payloadDetails);
 
         i_link.transferAndCall(registrar, details.amount, bytes.concat(registerSig, payload));
@@ -119,29 +148,51 @@ contract RoyaltyAutomationRegistrar {
         (state, _c, _k) = i_registry.getState();
         uint256 newNonce = state.nonce;
         if (newNonce == oldNonce + 1) {
-            uint256 upkeepID = uint256(keccak256(abi.encodePacked( blockhash(block.number - 1), address(i_registry), uint32(oldNonce))));
-                
+            uint256 upkeepID = uint256(keccak256(abi.encodePacked( blockhash(block.number - 1), address(i_registry), uint32(oldNonce)))); 
             i_registeredDetails.royaltyAddress = payable(details.royaltyAddress);
             i_registeredDetails.adapterAddress = royaltyAdapter;
             i_registeredDetails.adminAddress = details.adminAddress;
             i_registeredDetails.upkeepId = upkeepID;
-
-            hasReg[details.royaltyAddress] = true;
+            
+            //hasReg[details.royaltyAddress] = true;
             emit AutomationRegistered(details.royaltyAddress);
         } else {
             revert("auto-approve disabled");
         }
     }
 
-    function fundAutomation(address royaltyAddress, uint amount) external {
-        LinkTokenInterface i_link = LinkTokenInterface(link);
-        AutomationRegistryInterface i_registry = AutomationRegistryInterface(registry);
+    function fundAutomation(address royaltyAddress, uint96 amount) external {
+        i_link = LinkTokenInterface(link);
+        i_registry = AutomationRegistryInterface(registry);
         require(hasReg[royaltyAddress] == true, "not registered");
-        require(i_link.balanceOf(msg.sender) >= amount, "insufficent link balancce")
+        require(i_link.balanceOf(msg.sender) >= amount, "insufficent link balancce");
         RegisteredDetails memory i_registeredDetails = registeredDetails[royaltyAddress];
-        i_registry.addFund(i_registeredDetails.upkeepId, amount);
+        i_registry.addFunds(i_registeredDetails.upkeepId, amount);
 
         emit AutomationFunded(royaltyAddress, amount);
+    }
+
+    function updateAutomationConfig(address _link, address _registry, address _registrar) external {
+        require(IPicardyHub(picardyHub).checkHubAdmin(msg.sender), "not hub admin");
+        require(_link != address(0), "link address cannot be address 0");
+        require (_registry != address(0), "registry address cannot be address 0");
+        require(_registrar != address(0), "registrar address cannot be address 0");
+        
+        //Initilize interface
+        i_link = LinkTokenInterface(_link);
+        i_registry = AutomationRegistryInterface(_registry);
+        
+        //Initilize addresses
+        registrar = _registrar;
+        link = _link;
+        registry = _registry;
+    }
+
+    function updatePayMaster(address _payMaster) external {
+        require(IPicardyHub(picardyHub).checkHubAdmin(msg.sender), "not hub admin");
+        require(_payMaster != address(0), "payMaster address cannot be address 0");
+        i_payMaster = IPayMaster(_payMaster);
+        payMaster = _payMaster;
     }
 
     function getRegisteredDetails(address royaltyAddress) external view returns(RegisteredDetails memory) {
