@@ -26,6 +26,7 @@ interface KeeperRegistrarInterface {
 contract RoyaltyAutomationRegistrar {
 
     event AutomationRegistered(address indexed royaltyAddress);
+    event AutomationFunded(address indexed royaltyAddress, uint indexed amount);
     struct RegisteredDetails {
         address royaltyAddress;
         address adapterAddress;
@@ -65,6 +66,7 @@ contract RoyaltyAutomationRegistrar {
     bytes4 registerSig = KeeperRegistrarInterface.register.selector;
 
     mapping (address => RegisteredDetails) public registeredDetails;
+    mapping (address => bool) hasReg;
 
     constructor(
         address _link, //get fromchainlink docs
@@ -83,7 +85,8 @@ contract RoyaltyAutomationRegistrar {
     }
 
     function register(RegistrationDetails memory details) external {
-        
+        require(hasReg[details.royaltyAddress] == false, "Automation already registered")
+
         bytes memory encryptedEmail = abi.encode(details.email);
         IPayMaster i_payMaster = IPayMaster(payMaster);
         LinkTokenInterface i_link = LinkTokenInterface(link);
@@ -123,10 +126,22 @@ contract RoyaltyAutomationRegistrar {
             i_registeredDetails.adminAddress = details.adminAddress;
             i_registeredDetails.upkeepId = upkeepID;
 
+            hasReg[details.royaltyAddress] = true;
             emit AutomationRegistered(details.royaltyAddress);
         } else {
             revert("auto-approve disabled");
         }
+    }
+
+    function fundAutomation(address royaltyAddress, uint amount) external {
+        LinkTokenInterface i_link = LinkTokenInterface(link);
+        AutomationRegistryInterface i_registry = AutomationRegistryInterface(registry);
+        require(hasReg[royaltyAddress] == true, "not registered");
+        require(i_link.balanceOf(msg.sender) >= amount, "insufficent link balancce")
+        RegisteredDetails memory i_registeredDetails = registeredDetails[royaltyAddress];
+        i_registry.addFund(i_registeredDetails.upkeepId, amount);
+
+        emit AutomationFunded(royaltyAddress, amount);
     }
 
     function getRegisteredDetails(address royaltyAddress) external view returns(RegisteredDetails memory) {
