@@ -20,8 +20,8 @@ async function main() {
   const linkToken = "0x326C977E6efc84E512bB9C30f76E30c160eD06FB";
   const jobId = "42b90f5bf8b940029fed6330f7036f01";
   const oracleAddress = "0x7E0ffaca8352CbB93c099C08b9aD7B4bE9f790Ec";
-  const registry = "";
-  const registrar = "";
+  const registry = "0x7E0ffaca8352CbB93c099C08b9aD7B4bE9f790Ec"; // change this for testnet or mainnet deployment
+  const registrar = "0x7E0ffaca8352CbB93c099C08b9aD7B4bE9f790Ec"; // change this for testnet or mainnet deployment
   //Import comtracts
   const PicardyHub = await hre.ethers.getContractFactory("PicardyHub");
 
@@ -95,7 +95,8 @@ async function main() {
     oracleAddress,
     jobId,
     nftRoyaltyAdapterImpAddr,
-    tokenRoyaltyAdapterImpAddr
+    tokenRoyaltyAdapterImpAddr,
+    payMasterAddress
   );
   await royaltyAdapterFactory.deployed();
   const royaltyAdapterFactoryAddress = royaltyAdapterFactory.address;

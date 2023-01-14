@@ -15,6 +15,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract PayMaster {
 
     event PaymentPending(address indexed royaltyAddress, string indexed ticker, uint indexed amount);
+    event PendingRoyaltyRefunded (address indexed royaltyAddress, string indexed ticker, uint indexed amount);
+    event RoyaltyPaymentSent(address indexed royaltyAddress, string indexed ticker, uint indexed amount);
 
     IPicardyHub public picardyHub;
     address private regAddress;
@@ -98,7 +100,7 @@ contract PayMaster {
         } else {
             if(keccak256(bytes(_ticker)) == keccak256(bytes("ETH"))){
             royaltyReserve[_adapter][_royaltyAddress][_ticker] -= _amount;
-            royaltyPending[_adapter][_royaltyAddress][_ticker] += _amount;
+            royaltyPaid[_adapter][_royaltyAddress][_ticker] += _amount;
             (bool success, ) = payable(_royaltyAddress).call{value: _amount}("");
             require (success);
             } else {
@@ -117,7 +119,43 @@ contract PayMaster {
                 (bool success) = IERC20(tokenAddress[_ticker]).transfer(_royaltyAddress, _amount);
                 require (success);    
             }
-        } 
+        }
+
+        emit RoyaltyPaymentSent(_royaltyAddress, _ticker, _amount); 
+    }
+
+    function refundPending(address _adapter, string memory _ticker, uint256 _amount) public {
+        address _royaltyAddress = royaltyData[_adapter].royaltyAddress;
+        require(isRegistered[_adapter][_royaltyAddress] == true, "sendPayment: Not registered");
+        require(royaltyReserve[_adapter][_royaltyAddress][_ticker] >= _amount, "low reserve balance");
+        require(_amount <= royaltyPending[_adapter][_royaltyAddress][_ticker], "amount is greather than pending royalty");
+        uint royaltyType = royaltyData[_adapter].royaltyType;
+        if(keccak256(bytes(_ticker)) == keccak256(bytes("ETH"))){
+            royaltyReserve[_adapter][_royaltyAddress][_ticker] -= _amount;
+            royaltyPending[_adapter][_royaltyAddress][_ticker] -= _amount;
+            royaltyPaid[_adapter][_royaltyAddress][_ticker] += _amount;
+            (bool success, ) = payable(_royaltyAddress).call{value: _amount}("");
+            require (success);
+        } else {
+            require(tokenAddress[_ticker] != address(0), "sendPayment: Token not registered");
+            if(royaltyType == 0){
+                require(IRoyaltyAdapter(_adapter).getRoyaltySaleAddress() == _royaltyAddress, "Royalty address invalid");
+                 royaltyReserve[_adapter][_royaltyAddress][_ticker] -= _amount;
+                royaltyPending[_adapter][_royaltyAddress][_ticker] -= _amount;
+                royaltyPaid[_adapter][_royaltyAddress][_ticker] += _amount;
+                IPicardyNftRoyaltySale(_royaltyAddress).updateRoyalty(_amount);
+            } else if(royaltyType == 1){
+                require(ITokenRoyaltyAdapter(_adapter).getRoyaltySaleAddress() == _royaltyAddress, "Royalty address invalid");
+                 royaltyReserve[_adapter][_royaltyAddress][_ticker] -= _amount;
+                royaltyPending[_adapter][_royaltyAddress][_ticker] -= _amount;
+                royaltyPaid[_adapter][_royaltyAddress][_ticker] += _amount;
+                IPicardyTokenRoyaltySale(_royaltyAddress).updateRoyalty(_amount);
+            }
+            (bool success) = IERC20(tokenAddress[_ticker]).transfer(_royaltyAddress, _amount);
+            require (success);    
+        }
+
+        emit PendingRoyaltyRefunded(_royaltyAddress, _ticker, _amount);
     }
 
     function getRoyaltyReserve(address _adapter, string memory _ticker) public view returns (uint256) {
