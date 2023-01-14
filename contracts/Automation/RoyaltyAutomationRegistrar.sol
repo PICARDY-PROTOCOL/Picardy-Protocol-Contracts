@@ -23,8 +23,9 @@ interface KeeperRegistrarInterface {
     ) external;
 }
 
-contract RegisterAutomation {
+contract RoyaltyAutomationRegistrar {
 
+    event AutomationRegistered(address indexed royaltyAddress);
     struct RegisteredDetails {
         address royaltyAddress;
         address adapterAddress;
@@ -58,13 +59,12 @@ contract RegisterAutomation {
     address public link;
     address public registry;
     address public registrar;
-    address adapterFactory;
+    address public adapterFactory;
     address public picardyHub;
     address public payMaster;
     bytes4 registerSig = KeeperRegistrarInterface.register.selector;
 
     mapping (address => RegisteredDetails) public registeredDetails;
-    mapping (string => bool) tickerExists;
 
     constructor(
         address _link, //get fromchainlink docs
@@ -82,13 +82,7 @@ contract RegisterAutomation {
         adapterFactory = _adapterFactory;
     }
 
-    function addTicker(string memory ticker) public {
-        require(tickerExists[ticker] == false, "Ticker already exists");
-        require(IPicardyHub(picardyHub).checkHubAdmin(msg.sender) == true, "Not a hub admin");
-        tickerExists[ticker] = true;
-    }
-
-    function register(RegistrationDetails memory details) public {
+    function register(RegistrationDetails memory details) external {
         
         bytes memory encryptedEmail = abi.encode(details.email);
         IPayMaster i_payMaster = IPayMaster(payMaster);
@@ -129,9 +123,14 @@ contract RegisterAutomation {
             i_registeredDetails.adminAddress = details.adminAddress;
             i_registeredDetails.upkeepId = upkeepID;
 
+            emit AutomationRegistered(details.royaltyAddress);
         } else {
             revert("auto-approve disabled");
         }
+    }
+
+    function getRegisteredDetails(address royaltyAddress) external view returns(RegisteredDetails memory) {
+        return registeredDetails[royaltyAddress];
     }
 
     function _getPayload(PayloadDetails memory payloadDetails) internal view returns(bytes memory){
@@ -149,8 +148,29 @@ contract RegisterAutomation {
 
         return payload;
     }
+}
 
-    // function _updateRegisteredDetails(RegisteredDetails memory registeredDetails) internal {
+interface IRoyaltyAutomationRegistrar {
+    struct RegistrationDetails {
+        string name;
+        string ticker;
+        string email;
+        address royaltyAddress;
+        address adminAddress;
+        uint royaltyType;
+        uint updateInterval;
+        uint32 gasLimit;
+        uint96 amount;
+    }
 
-    // }
+    struct RegisteredDetails {
+        address royaltyAddress;
+        address adapterAddress;
+        address adminAddress;
+        uint upkeepId;
+    }
+    
+    function register(RegistrationDetails memory details) external;
+
+    function getRegisteredDetails(address royaltyAddress) external view returns(RegisteredDetails memory);
 }

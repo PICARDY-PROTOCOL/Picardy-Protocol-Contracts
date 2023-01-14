@@ -5,9 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract CPToken is ERC20 {
 
-    event TokenWrapped(address indexed account, uint indexed amount);
-    event TokenUnwrapped(address indexed account, uint indexed amount);
-
     uint decimal = 10**18;
     address public owner;
 

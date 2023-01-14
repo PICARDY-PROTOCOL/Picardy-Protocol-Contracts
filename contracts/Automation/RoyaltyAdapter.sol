@@ -52,7 +52,6 @@ contract RoyaltyAdapter is ChainlinkClient {
     //This request for the royalty form the royalty database
     function requestRoyaltyAmount() public {
         (, uint link) = contractBalances();
-        //string memory uri = INftRoyaltySaleFactory(nftRoyaltyFactory).getRoyaltyUri(royaltySaleAddress);
         require (link > ORACLE_PAYMENT,"royalty adapter: link balance low");
         require (msg.sender == royaltySaleAddress , "royalty adapter: Un-Auth");
         (,,,string memory songTitle,string memory artisteName) = IPicardyNftRoyaltySale(royaltySaleAddress).getTokenDetails();
@@ -63,19 +62,20 @@ contract RoyaltyAdapter is ChainlinkClient {
         );
         req.add("artisteName", artisteName);
         req.add("songTitle", songTitle);
-        req.add("tokenType", ticker);
+        req.add("ticker", ticker);
         sendOperatorRequestTo(oracle, req, ORACLE_PAYMENT);
         
     }
 
-    //fufills the royalty request 
+    //this function is called to fufil the api request and return the royalty value in whatever ticker is specified. 
+    //calls the pay master contract that checks the reserve for the adapter and pay royalty to the royalty contract 
     function fulfillrequestRoyaltyAmount(bytes32 _requestId, uint256 amount)
         public
         recordChainlinkFulfillment(_requestId)
     {
         emit RoyaltyData(_requestId, amount);
         IPayMaster(payMaster).sendPayment(address(this), ticker, amount);
-        // Call the update royalty balance on the royalty sale contract
+       
     }
 
     function getTickerAddress() public view returns(address) {
