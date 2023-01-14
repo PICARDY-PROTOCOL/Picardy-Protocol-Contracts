@@ -107,7 +107,7 @@ describe("RoyaltyAdapterFactory", async function () {
 
     tokenRoyaltySaleAddress = await tokenRoyaltyFactory
       .connect(user1)
-      .getTokenRoyaltyAddress(1);
+      .getTokenRoyaltyAddress(creatorsName, name);
 
     const NftRoyaltyAdapterImp = await hre.ethers.getContractFactory(
       "RoyaltyAdapter"

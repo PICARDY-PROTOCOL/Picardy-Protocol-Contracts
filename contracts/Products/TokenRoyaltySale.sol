@@ -49,6 +49,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
     uint256 updateInterval;
     bool automationStarted;
     bool initilized;
+    bool ownerWithdrawn;
     uint day = 1 days;
 
   
@@ -162,6 +163,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
     }
 
     function withdraw() external onlyOwner {
+        require(ownerWithdrawn == false, "funds already withdrawn");
         require(tokenRoyaltyState == TokenRoyaltyState.CLOSED, "royalty sale still open");
         require(royalty.royaltyPoolBalance > 0, "Pool balance empty");
         (address royaltyAddress, uint royaltyPercentage) = ITokenRoyaltySaleFactory(royalty.tokenRoyaltyFactory).getRoyaltyDetails();
@@ -173,6 +175,8 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         (bool os, ) = _owner.call{value: toWithdraw}("");
         require(hs);
         require(os);
+
+        ownerWithdrawn = true;
     }
 
     function withdrawRoyalty(uint _amount) external nonReentrant {

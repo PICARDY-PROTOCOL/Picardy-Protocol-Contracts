@@ -47,7 +47,7 @@ describe("TokenRoyaltySaleFactory", function () {
       .createTokenRoyalty(askAmount, returnPercentage, creatorsName, name);
 
     const tokenRoyaltyAddress =
-      await tokenRoyaltySaleFactory.getTokenRoyaltyAddress(1);
+      await tokenRoyaltySaleFactory.getTokenRoyaltyAddress(creatorsName, name);
 
     const receipt = await tx.wait();
 

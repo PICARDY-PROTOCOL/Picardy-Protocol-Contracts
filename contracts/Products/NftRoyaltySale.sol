@@ -56,6 +56,7 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
     uint256 updateInterval;
     bool automationStarted;
     bool initialized;
+    bool ownerWithdrawn;
     uint day = 1 days;
 
     mapping (address => uint) nftBalance;
@@ -209,6 +210,7 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
     }
 
     function withdraw() external onlyOwner { 
+        require(ownerWithdrawn == false, "funds already withdrawn");
         require(nftRoyaltyState == NftRoyaltyState.CLOSED, "royalty sale still open");
         (address royaltyAddress, uint royaltyPercentage) = INftRoyaltySaleFactory(royalty.factoryAddress).getRoyaltyDetails();
          uint balance = address(this).balance;
@@ -218,6 +220,7 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         (bool hs, ) = payable(msg.sender).call{value: toWithdraw}("");
         require(hs);
         require(os);
+        ownerWithdrawn = true;
         emit WithdrawSuccess(block.timestamp);
     }
 

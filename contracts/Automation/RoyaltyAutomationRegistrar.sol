@@ -73,7 +73,7 @@ contract RoyaltyAutomationRegistrar {
     AutomationRegistryInterface i_registry;
 
     constructor(
-        address _link, //get fromchainlink docs
+        address _link, //get from chainlink docs
         address _registrar, //get from chainlink docs
         address _registry, //get from chainlink docs
         address _adapterFactory,

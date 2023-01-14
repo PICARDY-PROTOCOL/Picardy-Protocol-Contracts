@@ -63,6 +63,9 @@ contract PayMaster {
     }
 
     function addRoyaltyData(address _adapter, address _royaltyAddress, uint royaltyType) public {
+        require(royaltyType == 0 || royaltyType == 1, "addRoyaltyData: Invalid royaltyType");
+        require(_adapter != address(0), "addRoyaltyData: Invalid adapter");
+        require(_royaltyAddress != address(0), "addRoyaltyData: Invalid royaltyAddress");
         require(msg.sender == regAddress, "addRoyaltyData: only picardyReg");
         require(isRegistered[_adapter][_royaltyAddress] == false, "addRoyaltyData: Already registered");
         royaltyData[_adapter] = RoyaltyData(_adapter, payable(_royaltyAddress), royaltyType);
@@ -70,6 +73,7 @@ contract PayMaster {
     }
 
     function addETHReserve(address _adapter, uint256 _amount) public payable {
+        require(_adapter != address(0), "addETHReserve: Invalid adapter");
         require(_amount > 0, "Amount must be greather than zero");
         address _royaltyAddress = royaltyData[_adapter].royaltyAddress;
         require(isRegistered[_adapter][_royaltyAddress] == true, "addETHReserve: Not registered");
@@ -79,6 +83,7 @@ contract PayMaster {
     }
 
     function addERC20Reserve(address _adapter, string memory _ticker, uint256 _amount) public {
+        require(_adapter != address(0), "addETHReserve: Invalid adapter");
         require(_amount > 0, "Amount must be greather than zero");
         address _royaltyAddress = royaltyData[_adapter].royaltyAddress;
         require(isRegistered[_adapter][_royaltyAddress] == true, "addERC20Reserve: Not registered");
@@ -89,6 +94,7 @@ contract PayMaster {
     }
 
     function sendPayment(address _adapter, string memory _ticker, uint256 _amount) public {
+        require(_adapter != address(0), "addETHReserve: Invalid adapter");
         address _royaltyAddress = royaltyData[_adapter].royaltyAddress;
         require(isRegistered[_adapter][_royaltyAddress] == true, "sendPayment: Not registered");
         require(msg.sender == _adapter, "sendPayment: Un-Auth (adapter)");
@@ -125,6 +131,7 @@ contract PayMaster {
     }
 
     function refundPending(address _adapter, string memory _ticker, uint256 _amount) public {
+        require(_adapter != address(0), "addETHReserve: Invalid adapter");
         address _royaltyAddress = royaltyData[_adapter].royaltyAddress;
         require(isRegistered[_adapter][_royaltyAddress] == true, "sendPayment: Not registered");
         require(royaltyReserve[_adapter][_royaltyAddress][_ticker] >= _amount, "low reserve balance");

@@ -52,7 +52,7 @@ describe("TokenRoyaltyTest", function () {
 
     const tokenAddress = await tokenRoyaltyFactory
       .connect(user1)
-      .getTokenRoyaltyAddress(1);
+      .getTokenRoyaltyAddress(creatorsName, name);
 
     tokenRoyaltySale = await ethers.getContractAt(
       "TokenRoyaltySale",

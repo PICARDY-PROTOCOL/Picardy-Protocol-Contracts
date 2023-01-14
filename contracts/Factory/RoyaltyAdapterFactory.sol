@@ -63,7 +63,6 @@ contract RoyaltyAdapterFactory is Context, ReentrancyGuard{
     function createAdapter(address _royaltySaleAddress, uint royaltyType, string memory _ticker) external nonReentrant returns(address){
         uint256 _adapterId = adapterId;
         address  payable n_royaltyAdapter;
-        
         if (royaltyType == 0){
         require(adapterExixt[_royaltySaleAddress] == false, "Adapter Already exist");
         bytes32 salt = keccak256(abi.encodePacked(_royaltySaleAddress, block.number, block.timestamp));

@@ -35,8 +35,8 @@ contract TokenRoyaltySaleFactory is Context, ReentrancyGuard {
     }
     RoyaltyDetails royaltyDetails;
 
-    mapping(uint => address) public tokenRoyaltyDetailsIdMap;
-    mapping(uint => TokenRoyaltyDetails) public tokenRoyaltyDetailsMap;
+    mapping(address => TokenRoyaltyDetails) public tokenRoyaltyDetailsMap;
+    mapping(string => mapping (string => address)) royaltySaleAddress;
     address picardyHub;
     address linkToken;
     uint tokenRoyaltyId = 1;
@@ -54,9 +54,9 @@ contract TokenRoyaltySaleFactory is Context, ReentrancyGuard {
         uint newTokenRoyaltyId = tokenRoyaltyId;
         bytes32 salt = keccak256(abi.encodePacked(newTokenRoyaltyId, block.number, block.timestamp));
         address payable tokenRoyalty = payable(Clones.cloneDeterministic(tokenRoyaltySaleImplementation, salt));
-        TokenRoyaltyDetails memory n_TokenRoyaltyDetails = TokenRoyaltyDetails(newTokenRoyaltyId, _askAmount, _returnPercentage, address(tokenRoyalty));
-        tokenRoyaltyDetailsIdMap[newTokenRoyaltyId] = tokenRoyalty;
-        tokenRoyaltyDetailsMap[newTokenRoyaltyId] = n_TokenRoyaltyDetails;
+        TokenRoyaltyDetails memory n_tokenRoyaltyDetails = TokenRoyaltyDetails(newTokenRoyaltyId, _askAmount, _returnPercentage, address(tokenRoyalty));
+        royaltySaleAddress[creatorName][name] = tokenRoyalty;
+        tokenRoyaltyDetailsMap[tokenRoyalty] = n_tokenRoyaltyDetails;
         tokenRoyaltyId++;
         TokenRoyaltySale(tokenRoyalty).initilize(_askAmount, _returnPercentage, address(this), _msgSender(), creatorName, name);
         emit TokenRoyaltyCreated(_msgSender(), tokenRoyalty, newTokenRoyaltyId);
@@ -81,8 +81,12 @@ contract TokenRoyaltySaleFactory is Context, ReentrancyGuard {
         return(royaltyAddress, royaltyPercentage);
     }
 
-    function getTokenRoyaltyAddress(uint _tokenRoyaltyId) external view returns(address){
-        return tokenRoyaltyDetailsIdMap[_tokenRoyaltyId];
+    function getTokenRoyaltyAddress(string memory creatorName, string memory name) external view returns(address){
+        return royaltySaleAddress[creatorName][name];
+    }
+
+    function getRoyaltySaleDetails(address _royaltySaleAddress) external view returns (TokenRoyaltyDetails memory) {
+        return tokenRoyaltyDetailsMap[_royaltySaleAddress];
     }
 
     function getHubAddress() external view returns (address){
