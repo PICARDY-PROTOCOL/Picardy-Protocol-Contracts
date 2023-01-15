@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../Tokens/CPToken.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
+import "@chainlink/contracts/src/v0.8/AutomationCompatible.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import {ITokenRoyaltyAdapter} from "../Automation/TokenRoyaltyAdapter.sol";
@@ -50,7 +50,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
     bool automationStarted;
     bool initilized;
     bool ownerWithdrawn;
-    uint day = 1 days;
+    uint day = 1 minutes;
 
   
     mapping (address => uint) royaltyBalance;
@@ -78,8 +78,9 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         royalty.creatorsName = _creatorsName;
         royalty.name = _name;
         owner = _creator;
-        _CPToken();
         initilized = true;
+        _CPToken();
+        
     }
 
     function start() external onlyOwner {
@@ -94,6 +95,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         keeperRegistryAddress = _regAddr;
         updateInterval = _updateInterval * day;
         royaltyAdapter = _royaltyAdapter;
+        lastRoyaltyUpdate = block.timestamp;
         automationStarted = true;
         emit AutomationStarted(true);
     }
@@ -130,8 +132,10 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         view
         override
         returns (bool upkeepNeeded, bytes memory performData)
-    {
-        upkeepNeeded = lastRoyaltyUpdate + updateInterval >= block.timestamp;
+    {   
+        require(tokenRoyaltyState == TokenRoyaltyState.CLOSED, "royalty Open");
+        require(automationStarted == true, "automation not started");
+        upkeepNeeded = (lastRoyaltyUpdate + updateInterval) >= block.timestamp;
         performData = "";
         //performData = abi.encode(royalty.artistName, royalty.name);
         return (upkeepNeeded, performData);
@@ -140,10 +144,12 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
     //Performs upkeep
     function performUpkeep(
         bytes calldata
-    ) external override onlyKeeperRegistry {
-        //(string memory artisteName, string memory name) = abi.decode(performData, (string,string));
-        // call the adapter contract and get the royalty value, and update holders
-        ITokenRoyaltyAdapter(royaltyAdapter).requestRoyaltyAmount();
+    ) external override {
+        require(tokenRoyaltyState == TokenRoyaltyState.CLOSED, "royalty Open");
+        require(automationStarted == true, "automation not started");
+        if((lastRoyaltyUpdate + updateInterval) >= block.timestamp){
+            ITokenRoyaltyAdapter(royaltyAdapter).requestRoyaltyAmount();
+        }
         emit UpkeepPerformed(block.timestamp);
     }
 
@@ -170,13 +176,12 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         uint balance = royalty.royaltyPoolBalance;
         uint txFee = (balance * royaltyPercentage) / 100;
         uint toWithdraw = balance - txFee;
+        ownerWithdrawn = true;
         address _owner = payable(owner);
         (bool hs, ) = payable(royaltyAddress).call{value: txFee}("");
         (bool os, ) = _owner.call{value: toWithdraw}("");
         require(hs);
         require(os);
-
-        ownerWithdrawn = true;
     }
 
     function withdrawRoyalty(uint _amount) external nonReentrant {

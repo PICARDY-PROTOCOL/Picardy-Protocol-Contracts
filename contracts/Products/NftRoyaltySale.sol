@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "../Tokens/PicardyNftBase.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
+import "@chainlink/contracts/src/v0.8/AutomationCompatible.sol";
 import {IRoyaltyAdapter} from "../Automation/RoyaltyAdapter.sol";
 import {INftRoyaltySaleFactory} from "../Factory/NftRoyaltySaleFactory.sol";
 
@@ -216,11 +216,11 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
          uint balance = address(this).balance;
          uint txFee = balance * royaltyPercentage / 100;
          uint toWithdraw = balance - txFee;
+         ownerWithdrawn = true;
         (bool os, ) = payable(royaltyAddress).call{value: txFee}("");
         (bool hs, ) = payable(msg.sender).call{value: toWithdraw}("");
         require(hs);
         require(os);
-        ownerWithdrawn = true;
         emit WithdrawSuccess(block.timestamp);
     }
 

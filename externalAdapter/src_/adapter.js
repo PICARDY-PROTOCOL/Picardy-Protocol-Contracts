@@ -20,7 +20,7 @@ app.get("/", (req, res) => {
   res.send("external adapter is running");
 });
 
-app.post("/", async (req, res) => {
+app.post("/artiste", async (req, res) => {
   const eaInputData = req.body;
   console.log("request Recievesd", eaInputData);
   // build apiRequest

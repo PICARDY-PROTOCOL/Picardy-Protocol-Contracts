@@ -20,10 +20,10 @@ app.get("/", (req, res) => {
   res.status(200).json({ message: "You are connected to the server" });
 });
 
-app.get(`/artiste/:artisteName/:songTitle/:ticker`, async (req, res) => {
+app.get(`/artiste/:artisteName/:songTitle`, async (req, res) => {
   const artisteName = req.params.artisteName;
   const songTitle = req.params.songTitle;
-  const ticker = req.params.ticker;
+  //const ticker = req.params.ticker;
   const amount = await getRoyaltyAmount(artisteName, songTitle);
   res.status(200).json({ amount: amount });
 });

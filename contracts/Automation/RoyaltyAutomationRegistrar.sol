@@ -96,7 +96,6 @@ contract RoyaltyAutomationRegistrar {
         require(hasReg[details.royaltyAddress] == false, "already registered");
         
         bytes memory encryptedEmail = abi.encode(details.email);
-        RegisteredDetails memory i_registeredDetails = registeredDetails[details.royaltyAddress];
         address royaltyAdapter;
         
         require(i_payMaster.checkTickerExist(details.ticker), "Ticker not accepted");
@@ -149,12 +148,9 @@ contract RoyaltyAutomationRegistrar {
         uint256 newNonce = state.nonce;
         if (newNonce == oldNonce + 1) {
             uint256 upkeepID = uint256(keccak256(abi.encodePacked( blockhash(block.number - 1), address(i_registry), uint32(oldNonce)))); 
-            i_registeredDetails.royaltyAddress = payable(details.royaltyAddress);
-            i_registeredDetails.adapterAddress = royaltyAdapter;
-            i_registeredDetails.adminAddress = details.adminAddress;
-            i_registeredDetails.upkeepId = upkeepID;
-            
-            //hasReg[details.royaltyAddress] = true;
+            RegisteredDetails memory i_registeredDetails = RegisteredDetails( details.royaltyAddress, royaltyAdapter, details.adminAddress, upkeepID);
+            registeredDetails[details.royaltyAddress] = i_registeredDetails;
+            hasReg[details.royaltyAddress] = true;
             emit AutomationRegistered(details.royaltyAddress);
         } else {
             revert("auto-approve disabled");
