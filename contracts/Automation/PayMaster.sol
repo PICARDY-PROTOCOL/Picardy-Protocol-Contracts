@@ -72,6 +72,15 @@ contract PayMaster {
         isRegistered[_adapter][_royaltyAddress] = true;
     }
 
+    function removeRoyaltyData(address _adapter, address _royaltyAddress) public {
+        require(_adapter != address(0), "removeRoyaltyData: Invalid adapter");
+        require(_royaltyAddress != address(0), "removeRoyaltyData: Invalid royaltyAddress");
+        require(msg.sender == regAddress, "removeRoyaltyData: only picardyReg");
+        require(isRegistered[_adapter][_royaltyAddress] == true, "removeRoyaltyData: Not registered");
+        delete royaltyData[_adapter];
+        delete isRegistered[_adapter][_royaltyAddress];
+    }
+
     function addETHReserve(address _adapter, uint256 _amount) public payable {
         require(_adapter != address(0), "addETHReserve: Invalid adapter");
         require(_amount > 0, "Amount must be greather than zero");
@@ -221,6 +230,7 @@ interface IPayMaster {
     function getTokenAddress(string memory _ticker) external view returns (address);
     function addRoyaltyReserve(address _adapter,string memory _ticker, uint256 _amount) external payable;
     function addRoyaltyData(address _adapter, address _royaltyAddress, uint royaltyType) external;
+    function removeRoyaltyData(address _adapter, address _royaltyAddress) external;
     function sendPayment(address _adapter, string memory _ticker, uint256 _amount) external;
     function checkTickerExist(string memory _ticker) external view returns(bool);
 }
