@@ -303,5 +303,11 @@ interface IRoyaltyAutomationRegistrar {
     
     function register(RegistrationDetails memory details) external;
 
+    function fundAutomation(address royaltyAddress, uint96 amount) external;
+
+    function cancleAutomation(address royaltyAddress, uint _royaltyType) external;
+
+    function resetAutomation(RegistrationDetails memory details) external;
+
     function getRegisteredDetails(address royaltyAddress) external view returns(RegisteredDetails memory);
 }

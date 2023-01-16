@@ -16,4 +16,7 @@ contracts/Products/CrowdfundNonRefundable.sol
 contracts/Products/PicardyVault.sol
 contracts/Governance
 contract/Tokens/VSToken.sol
+Deployed_address
+externalAdapter
+contracts/PicardyHub.sol
 
