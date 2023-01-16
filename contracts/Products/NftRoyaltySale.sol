@@ -14,9 +14,6 @@ import {INftRoyaltySaleFactory} from "../Factory/NftRoyaltySaleFactory.sol";
 
 contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterface {
 
-
-    error OnlyKeeperRegistry();
-
     event UpkeepPerformed(uint indexed time);
     event Received(address indexed sender, uint indexed amount);
     event AutomationStarted(bool indexed status);
@@ -37,7 +34,7 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         uint maxSupply;
         uint cost;
         uint percentage;
-        string artistName;
+        string creatorName;
         string name;
         string initBaseURI;
         string symbol;
@@ -61,7 +58,6 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
     mapping (address => uint) nftBalance;
     mapping (address => uint) public royaltyBalance;
     mapping (address => uint[]) tokenIdMap;
-    mapping (uint => bool) public isApproved;
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner can call this function.");
@@ -75,11 +71,11 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         string memory _name,
         string memory _symbol, 
         string memory _initBaseURI, 
-        string memory _artistName,
+        string memory _creatorName,
         address _creator,
         address _factroyAddress) public {
             require(!initialized, "already initialized");
-            Royalty memory newRoyalty = Royalty(_maxMintAmount, _maxSupply, _cost, _percentage, _artistName, _name, _initBaseURI, _symbol, _creator, _factroyAddress);
+            Royalty memory newRoyalty = Royalty(_maxMintAmount, _maxSupply, _cost, _percentage, _creatorName, _name, _initBaseURI, _symbol, _creator, _factroyAddress);
             royalty = newRoyalty;
             owner = _creator;
             nftRoyaltyState = NftRoyaltyState.CLOSED;
@@ -121,7 +117,7 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         require(automationStarted == true, "automation not started");
         upkeepNeeded = (lastRoyaltyUpdate + updateInterval) >= block.timestamp;
         performData = "";
-        //performData = abi.encode(royalty.artistName, royalty.name);
+        //performData = abi.encode(royalty.creatorName, royalty.name);
         return (upkeepNeeded, performData);
     }
 
@@ -137,7 +133,7 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         } 
     }
 
-    function buyRoyalty(uint _mintAmount, address _holder) external payable {
+    function buyRoyalty(uint _mintAmount, address _holder) external payable whenNotPaused nonReentrant{
         uint cost = royalty.cost;
         require(nftRoyaltyState == NftRoyaltyState.OPEN);
         require(msg.value >= cost * _mintAmount, "Insufficient funds!");
@@ -194,9 +190,9 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         uint percentage=royalty.percentage;
         string memory symbol =royalty.symbol;
         string memory name = royalty.name;
-        string memory artisteName = royalty.artistName;
+        string memory creatorName = royalty.creatorName;
 
-        return (price, maxSupply, percentage, symbol, name, artisteName);
+        return (price, maxSupply, percentage, symbol, name, creatorName);
     }
 
     function getCreator() external view returns(address){

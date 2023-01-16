@@ -97,7 +97,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
 
     // TODO: add the pending balance function to be called by payMaster
 
-    function buyRoyalty(address _holder) external payable {
+    function buyRoyalty(address _holder) external payable whenNotPaused nonReentrant {
         require(tokenRoyaltyState == TokenRoyaltyState.OPEN, "Sale closed");
         require(msg.value <=  royalty.royaltyPoolSize);
         royalty.royaltyPoolBalance += msg.value;
