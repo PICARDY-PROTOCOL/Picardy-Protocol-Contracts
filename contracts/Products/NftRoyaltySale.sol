@@ -49,7 +49,6 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
     
     address public owner;
     address public nftRoyaltyAddress;
-    address private keeperRegistryAddress;
     address private royaltyAdapter;
     address private picardyReg;
     uint256 lastRoyaltyUpdate;
@@ -57,19 +56,12 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
     bool automationStarted;
     bool initialized;
     bool ownerWithdrawn;
-    uint day = 1 days;
+    uint time = 1 minutes;
 
     mapping (address => uint) nftBalance;
     mapping (address => uint) public royaltyBalance;
     mapping (address => uint[]) tokenIdMap;
     mapping (uint => bool) public isApproved;
-
-    modifier onlyKeeperRegistry() {
-        if (msg.sender != keeperRegistryAddress) {
-            revert OnlyKeeperRegistry();
-        }
-        _;
-    }
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner can call this function.");
@@ -102,12 +94,11 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
 
 
     //call this to start automtion of the royalty contract, PS: contract needs LINK for automation to work
-    function setupAutomation(address _regAddr, uint256 _updateInterval, address _royaltyAdapter) external {
+    function setupAutomation(uint256 _updateInterval, address _royaltyAdapter) external {
         require(msg.sender == IRoyaltyAdapter(_royaltyAdapter).getPicardyReg(), "setupAutomation: only picardy reg");
         require(automationStarted == false, "startAutomation: automation started");
         require(nftRoyaltyState == NftRoyaltyState.OPEN, "royalty sale closed");
-        keeperRegistryAddress = _regAddr;
-        updateInterval = _updateInterval * day;
+        updateInterval = _updateInterval * time;
         royaltyAdapter = _royaltyAdapter;
         automationStarted = true;
         emit AutomationStarted(true);
@@ -126,8 +117,9 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         override
         returns (bool upkeepNeeded, bytes memory performData)
     {   
+        require(nftRoyaltyState == NftRoyaltyState.CLOSED, "royalty sale open");
         require(automationStarted == true, "automation not started");
-        upkeepNeeded = lastRoyaltyUpdate + updateInterval >= block.timestamp;
+        upkeepNeeded = (lastRoyaltyUpdate + updateInterval) >= block.timestamp;
         performData = "";
         //performData = abi.encode(royalty.artistName, royalty.name);
         return (upkeepNeeded, performData);
@@ -136,20 +128,22 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
     //Performs upkeep
     function performUpkeep(
         bytes calldata
-    ) external override onlyKeeperRegistry {
-        //(string memory artisteName, string memory name) = abi.decode(performData, (string,string));
-        // call the adapter contract and get the royalty value, and update holders
-        IRoyaltyAdapter(royaltyAdapter).requestRoyaltyAmount();
-        emit UpkeepPerformed(block.timestamp);
+    ) external override {
+        require(nftRoyaltyState == NftRoyaltyState.CLOSED, "royalty sale open");
+        require(automationStarted == true, "automation not started");
+        if((lastRoyaltyUpdate + updateInterval) >= block.timestamp){
+            IRoyaltyAdapter(royaltyAdapter).requestRoyaltyAmount();
+            emit UpkeepPerformed(block.timestamp);
+        } 
     }
 
-    function buyRoyalty(uint _mintAmount) external payable {
+    function buyRoyalty(uint _mintAmount, address _holder) external payable {
         uint cost = royalty.cost;
         require(nftRoyaltyState == NftRoyaltyState.OPEN);
         require(msg.value >= cost * _mintAmount, "Insufficient funds!");
-        nftBalance[msg.sender] += _mintAmount;
-        PicardyNftBase(nftRoyaltyAddress).buyRoyalty(_mintAmount, _msgSender());
-        emit RoyaltySold(_mintAmount, _msgSender());
+        nftBalance[_holder] += _mintAmount;
+        PicardyNftBase(nftRoyaltyAddress).buyRoyalty(_mintAmount, _holder);
+        emit RoyaltySold(_mintAmount, _holder);
     }
     /**
         @dev This function is going to be modified with the use of an oracle and chanlink keeper for automation.    
@@ -224,26 +218,26 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         emit WithdrawSuccess(block.timestamp);
     }
 
-    function withdrawRoyalty(uint _amount) external nonReentrant {
+    function withdrawRoyalty(uint _amount, address _holder) external nonReentrant {
         require(nftRoyaltyState == NftRoyaltyState.CLOSED, "royalty sale still open");
         require(address(this).balance >= _amount, "Insufficient funds");
-        require(royaltyBalance[msg.sender] >= _amount, "Insufficient balance");
-        royaltyBalance[msg.sender] -= _amount;
-        (bool os, ) = payable(msg.sender).call{value: _amount}("");
+        require(royaltyBalance[_holder] >= _amount, "Insufficient balance");
+        royaltyBalance[_holder] -= _amount;
+        (bool os, ) = payable(_holder).call{value: _amount}("");
         require(os);
-        emit RoyaltyWithdrawn(_amount, msg.sender);
+        emit RoyaltyWithdrawn(_amount, _holder);
     }
 
-    function withdrawRoyaltyERC(uint _amount) external nonReentrant {
+    function withdrawRoyaltyERC(uint _amount, address _holder) external nonReentrant {
         require (automationStarted == true, "automation not started");
         require(nftRoyaltyState == NftRoyaltyState.CLOSED, "royalty sale still open");
         address tokenAddress = IRoyaltyAdapter(royaltyAdapter).getTickerAddress();
         require(IERC20(tokenAddress).balanceOf(address(this)) >= _amount, "low balance");
-        require(royaltyBalance[msg.sender] >= _amount, "Insufficient balance");
-        royaltyBalance[msg.sender] -= _amount;
-        (bool os) = IERC20(tokenAddress).transfer(msg.sender, _amount);
+        require(royaltyBalance[_holder] >= _amount, "Insufficient balance");
+        royaltyBalance[_holder] -= _amount;
+        (bool os) = IERC20(tokenAddress).transfer(_holder, _amount);
         require(os);
-        emit RoyaltyWithdrawn(_amount, msg.sender);
+        emit RoyaltyWithdrawn(_amount, _holder);
     }
 
     function pause() public onlyOwner {
@@ -269,15 +263,10 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         uint[] storage tokenIds = tokenIdMap[addr];
         uint balance = IERC721Enumerable(nftRoyaltyAddress).balanceOf(addr);
         uint totalSupply = IERC721Enumerable(nftRoyaltyAddress).totalSupply();
-        for (uint i; i< totalSupply; i++){
+        for (uint i; i< balance; i++){
             uint tokenId = IERC721Enumerable(nftRoyaltyAddress).tokenOfOwnerByIndex(msg.sender, i);
             tokenIds.push(tokenId);
-
-            if(tokenIds.length == balance){
-                revert();
-            }
         }
-
         return tokenIds;
     }
 

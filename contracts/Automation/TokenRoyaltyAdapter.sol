@@ -14,7 +14,6 @@ contract TokenRoyaltyAdapter is ChainlinkClient {
     event RoyaltyData(bytes32 indexed requestId, uint indexed value);
 
     uint256 private constant ORACLE_PAYMENT = 1 * LINK_DIVISIBILITY; // 1 * 10**18
-    string public lastRetrievedInfo;
 
     address public owner;
     address public oracle;
@@ -42,23 +41,23 @@ contract TokenRoyaltyAdapter is ChainlinkClient {
         setChainlinkToken(_linkToken);
         owner = _owner;
         initialized = true;
-        // Link Mumbai 0x326C977E6efc84E512bB9C30f76E30c160eD06FB
     }
 
     //This request for the royalty form the royalty database
     function requestRoyaltyAmount() public {
         (, uint link) = contractBalances();
-        //string memory uri = INftRoyaltySaleFactory(nftRoyaltyFactory).getRoyaltyUri(royaltySaleAddress);
         require (link > ORACLE_PAYMENT,"royalty adapter: link balance low");
         require (msg.sender == royaltySaleAddress , "royalty adapter: Un-Auth");
-        (string memory songTitle,string memory artisteName) = IPicardyTokenRoyaltySale(royaltySaleAddress).getTokenDetails();
+        (string memory name,string memory creatorsName) = IPicardyTokenRoyaltySale(royaltySaleAddress).getTokenDetails();
 
         Chainlink.Request memory req = buildOperatorRequest(
             stringToBytes32(jobId),
             this.fulfillrequestRoyaltyAmount.selector
         );
-        req.add("artisteName", artisteName);
-        req.add("songTitle", songTitle);
+
+        //change the request variable to match Name $ Creators name on the external adapter
+        req.add("artisteName", creatorsName);
+        req.add("songTitle", name);
         sendOperatorRequestTo(oracle, req, ORACLE_PAYMENT);
         
     }
@@ -67,7 +66,11 @@ contract TokenRoyaltyAdapter is ChainlinkClient {
     function fulfillrequestRoyaltyAmount(bytes32 _requestId, uint256 amount)
         public
         recordChainlinkFulfillment(_requestId)
-    {
+    {   
+        if(amount == 0){
+            emit RoyaltyData(requestId, 0);
+            revert();
+        }
         emit RoyaltyData(_requestId, amount);
         IPayMaster(payMaster).sendPayment(address(this), ticker, amount);
     }

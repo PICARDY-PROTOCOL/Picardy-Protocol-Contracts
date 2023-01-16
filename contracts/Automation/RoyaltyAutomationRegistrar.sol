@@ -108,7 +108,11 @@ contract RoyaltyAutomationRegistrar {
                 details.ticker
             );
             royalty.setupAutomation(registry, details.updateInterval, royaltyAdapter);
-            i_payMaster.addRoyaltyData(royaltyAdapter, details.royaltyAddress, details.royaltyType);
+            i_payMaster.addRoyaltyData(
+                royaltyAdapter, 
+                details.royaltyAddress, 
+                details.royaltyType
+                );
         }
         else if (details.royaltyType == 1){
             IPicardyTokenRoyaltySale royalty = IPicardyTokenRoyaltySale(details.royaltyAddress);
@@ -167,6 +171,10 @@ contract RoyaltyAutomationRegistrar {
 
         emit AutomationFunded(royaltyAddress, amount);
     }
+
+    // TODO: add a function to cancle automation
+
+    // TODO: add a function to withdraw funds in cancled automation
 
     function updateAutomationConfig(address _link, address _registry, address _registrar) external {
         require(IPicardyHub(picardyHub).checkHubAdmin(msg.sender), "not hub admin");

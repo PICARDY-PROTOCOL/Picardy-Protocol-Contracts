@@ -13,8 +13,6 @@ import {ITokenRoyaltySaleFactory} from "../Factory/TokenRoyaltySaleFactory.sol";
 
 contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pausable {
 
-    error OnlyKeeperRegistry();
-
     event RoyaltyBalanceUpdated(uint indexed time, uint indexed amount);
     event Received(address indexed depositor, uint indexed amount);
     event UpkeepPerformed(uint indexed time);
@@ -43,14 +41,13 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
     Royalty royalty;
     
     address public owner;
-    address private keeperRegistryAddress;
     address private royaltyAdapter;
     uint256 lastRoyaltyUpdate;
     uint256 updateInterval;
     bool automationStarted;
     bool initilized;
     bool ownerWithdrawn;
-    uint day = 1 minutes;
+    uint time = 1 minutes;
 
   
     mapping (address => uint) royaltyBalance;
@@ -59,13 +56,6 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner can call this function.");
-        _;
-    }
-
-    modifier onlyKeeperRegistry() {
-        if (msg.sender != keeperRegistryAddress) {
-            revert OnlyKeeperRegistry();
-        }
         _;
     }
 
@@ -78,6 +68,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         royalty.creatorsName = _creatorsName;
         royalty.name = _name;
         owner = _creator;
+        TokenRoyaltyState = TokenRoyaltySale.CLOSED;
         initilized = true;
         _CPToken();
         
@@ -88,12 +79,11 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         _start();
     }
         //call this to start automtion of the royalty contract, deposit link for automation
-    function setupAutomation(address _regAddr, uint256 _updateInterval, address _royaltyAdapter) external { 
+    function setupAutomation(uint256 _updateInterval, address _royaltyAdapter) external { 
         require(msg.sender == ITokenRoyaltyAdapter(_royaltyAdapter).getPicardyReg(), "setupAutomation: only picardy reg");
         require (automationStarted == false, "startAutomation: automation started");
         require(tokenRoyaltyState == TokenRoyaltyState.OPEN, "royalty Closed");
-        keeperRegistryAddress = _regAddr;
-        updateInterval = _updateInterval * day;
+        updateInterval = _updateInterval * time;
         royaltyAdapter = _royaltyAdapter;
         lastRoyaltyUpdate = block.timestamp;
         automationStarted = true;
@@ -107,18 +97,19 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
 
     // TODO: add the pending balance function to be called by payMaster
 
-    function buyRoyalty() external payable {
+    function buyRoyalty(address _holder) external payable {
         require(tokenRoyaltyState == TokenRoyaltyState.OPEN, "Sale closed");
-        require(isPoolMember[msg.sender] == false);
         require(msg.value <=  royalty.royaltyPoolSize);
         royalty.royaltyPoolBalance += msg.value;
-        _buyRoyalty(msg.value);
+        _buyRoyalty(msg.value, _holder);
     }
 
-    function _buyRoyalty(uint _amount) internal {
-        isPoolMember[msg.sender] = true;
-        royalty.royaltyPoolMembers.push(_msgSender());
-        (bool os) = IERC20(royalty.royaltyCPToken).transfer( _msgSender(), _amount);
+    function _buyRoyalty(uint _amount, address _holder) internal {
+        if (isPoolMember[_holder] == false){
+            royalty.royaltyPoolMembers.push(_holder);
+            isPoolMember[_holder] = true;
+        }
+        (bool os) = IERC20(royalty.royaltyCPToken).transfer( _holder, _amount);
         require(os, "transfer failed");
         if(royalty.royaltyPoolSize == royalty.royaltyPoolBalance){
             tokenRoyaltyState = TokenRoyaltyState.CLOSED;
@@ -149,13 +140,13 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         require(automationStarted == true, "automation not started");
         if((lastRoyaltyUpdate + updateInterval) >= block.timestamp){
             ITokenRoyaltyAdapter(royaltyAdapter).requestRoyaltyAmount();
-        }
-        emit UpkeepPerformed(block.timestamp);
+            emit UpkeepPerformed(block.timestamp);
+        }    
     }
 
     function updateRoyalty(uint amount) external {
-        require(tokenRoyaltyState == TokenRoyaltyState.CLOSED, "royalty sale still open");
         address payMaster = ITokenRoyaltyAdapter(royaltyAdapter).getPayMaster();
+        require(tokenRoyaltyState == TokenRoyaltyState.CLOSED, "royalty sale still open");
         require (msg.sender == payMaster, "updateRoyalty: Un-auth");
         for(uint i = 0; i < royalty.royaltyPoolMembers.length; i++){
             address poolMember = royalty.royaltyPoolMembers[i];
@@ -184,32 +175,40 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         require(os);
     }
 
-    function withdrawRoyalty(uint _amount) external nonReentrant {
+    function withdrawRoyalty(uint _amount, address _holder) external nonReentrant {
         require(tokenRoyaltyState == TokenRoyaltyState.CLOSED, "royalty sale still open");
-        require(isPoolMember[msg.sender] == true);
-        require(royaltyBalance[msg.sender] != 0);
-        require(royaltyBalance[msg.sender] >= _amount);
-        royaltyBalance[msg.sender] - _amount;
-        (bool os, ) = payable(_msgSender()).call{value: _amount}("");
-        emit RoyaltyWithdrawn(_amount, msg.sender);
+        require(isPoolMember[_holder] == true, "not royalty member");
+        require(royaltyBalance[_holder] != 0, "royalty balance empty");
+        require(royaltyBalance[_holder] >= _amount);
+        royaltyBalance[_holder] - _amount;
+        (bool os, ) = payable(_holder).call{value: _amount}("");
+        emit RoyaltyWithdrawn(_amount, _holder);
         require(os);
     }
 
-    function withdrawRoyaltyERC(uint _amount) external nonReentrant {
+    function withdrawRoyaltyERC(uint _amount, address _holder) external nonReentrant {
         require (automationStarted == true, "automation not started");
         require(tokenRoyaltyState == TokenRoyaltyState.CLOSED, "royalty still open");
         address tokenAddress = ITokenRoyaltyAdapter(royaltyAdapter).getTickerAddress();
         require(IERC20(tokenAddress).balanceOf(address(this)) >= _amount, "low balance");
-        require(royaltyBalance[msg.sender] >= _amount, "Insufficient balance");
-        royaltyBalance[msg.sender] -= _amount;
-        (bool os) = IERC20(tokenAddress).transfer(msg.sender, _amount);
+        require(royaltyBalance[_holder] >= _amount, "Insufficient balance");
+        royaltyBalance[_holder] -= _amount;
+        (bool os) = IERC20(tokenAddress).transfer(_holder, _amount);
         require(os);
-        emit RoyaltyWithdrawn(_amount, msg.sender);  
+        emit RoyaltyWithdrawn(_amount, _holder);  
     }
 
     function changeRoyaltyState() external onlyOwner{
         require(tokenRoyaltyState == TokenRoyaltyState.OPEN, "royalty Closed");
         tokenRoyaltyState = TokenRoyaltyState.CLOSED;
+    }
+
+    function changeUpdateInterval(address _updateInterval) external {
+      updateInterval = _updateInterval * time;  
+    }
+
+    function changeAdapter(address _adapter) external {
+        royaltyAdapter = _adapter;
     }
 
     function getPoolMembers() external view returns (address[] memory){
