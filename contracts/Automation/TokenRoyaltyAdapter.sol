@@ -56,8 +56,8 @@ contract TokenRoyaltyAdapter is ChainlinkClient {
         );
 
         //change the request variable to match Name $ Creators name on the external adapter
-        req.add("artisteName", creatorsName);
-        req.add("songTitle", name);
+        req.add("creatorsName", creatorsName);
+        req.add("name", name);
         sendOperatorRequestTo(oracle, req, ORACLE_PAYMENT);
         
     }
