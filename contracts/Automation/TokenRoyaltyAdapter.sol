@@ -68,7 +68,7 @@ contract TokenRoyaltyAdapter is ChainlinkClient {
         recordChainlinkFulfillment(_requestId)
     {   
         if(amount == 0){
-            emit RoyaltyData(requestId, 0);
+            emit RoyaltyData(_requestId, 0);
             revert();
         }
         emit RoyaltyData(_requestId, amount);

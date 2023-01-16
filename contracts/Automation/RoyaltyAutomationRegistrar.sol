@@ -107,7 +107,7 @@ contract RoyaltyAutomationRegistrar {
                 details.royaltyType, 
                 details.ticker
             );
-            royalty.setupAutomation(registry, details.updateInterval, royaltyAdapter);
+            royalty.setupAutomation(details.updateInterval, royaltyAdapter);
             i_payMaster.addRoyaltyData(
                 royaltyAdapter, 
                 details.royaltyAddress, 
@@ -122,7 +122,7 @@ contract RoyaltyAutomationRegistrar {
                 details.ticker
             );
 
-            royalty.setupAutomation(registry, details.updateInterval, royaltyAdapter);
+            royalty.setupAutomation(details.updateInterval, royaltyAdapter);
             i_payMaster.addRoyaltyData(
                 royaltyAdapter, 
                 details.royaltyAddress, 

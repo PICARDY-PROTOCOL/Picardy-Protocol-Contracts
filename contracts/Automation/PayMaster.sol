@@ -115,12 +115,12 @@ contract PayMaster {
                     require(IRoyaltyAdapter(_adapter).getRoyaltySaleAddress() == _royaltyAddress, "Royalty address invalid");
                     royaltyReserve[_adapter][_royaltyAddress][_ticker] -= _amount;
                     royaltyPaid[_adapter][_royaltyAddress][_ticker] += _amount;
-                    IPicardyNftRoyaltySale(_royaltyAddress).updateRoyalty(_amount);
+                    IPicardyNftRoyaltySale(_royaltyAddress).updateRoyalty(_amount, tokenAddress[_ticker]);
                 } else if(royaltyType == 1){
                     require(ITokenRoyaltyAdapter(_adapter).getRoyaltySaleAddress() == _royaltyAddress, "Royalty address invalid");
                     royaltyReserve[_adapter][_royaltyAddress][_ticker] -= _amount;
                     royaltyPaid[_adapter][_royaltyAddress][_ticker] += _amount;
-                    IPicardyTokenRoyaltySale(_royaltyAddress).updateRoyalty(_amount);
+                    IPicardyTokenRoyaltySale(_royaltyAddress).updateRoyalty(_amount, tokenAddress[_ticker]);
                 }
                 (bool success) = IERC20(tokenAddress[_ticker]).transfer(_royaltyAddress, _amount);
                 require (success);    
@@ -150,13 +150,13 @@ contract PayMaster {
                  royaltyReserve[_adapter][_royaltyAddress][_ticker] -= _amount;
                 royaltyPending[_adapter][_royaltyAddress][_ticker] -= _amount;
                 royaltyPaid[_adapter][_royaltyAddress][_ticker] += _amount;
-                IPicardyNftRoyaltySale(_royaltyAddress).updateRoyalty(_amount);
+                IPicardyNftRoyaltySale(_royaltyAddress).updateRoyalty(_amount, tokenAddress[_ticker]);
             } else if(royaltyType == 1){
                 require(ITokenRoyaltyAdapter(_adapter).getRoyaltySaleAddress() == _royaltyAddress, "Royalty address invalid");
                  royaltyReserve[_adapter][_royaltyAddress][_ticker] -= _amount;
                 royaltyPending[_adapter][_royaltyAddress][_ticker] -= _amount;
                 royaltyPaid[_adapter][_royaltyAddress][_ticker] += _amount;
-                IPicardyTokenRoyaltySale(_royaltyAddress).updateRoyalty(_amount);
+                IPicardyTokenRoyaltySale(_royaltyAddress).updateRoyalty(_amount, tokenAddress[_ticker]);
             }
             (bool success) = IERC20(tokenAddress[_ticker]).transfer(_royaltyAddress, _amount);
             require (success);    

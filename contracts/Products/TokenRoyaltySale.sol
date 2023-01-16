@@ -51,6 +51,9 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
 
   
     mapping (address => uint) royaltyBalance;
+
+    //holder => tokenAddress => royaltyBalance
+    mapping (address => mapping(address => uint)) public ercRoyaltyBalance;
     mapping (address => bool) isPoolMember;
     mapping (address => uint) memberSize;
 
@@ -68,7 +71,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         royalty.creatorsName = _creatorsName;
         royalty.name = _name;
         owner = _creator;
-        TokenRoyaltyState = TokenRoyaltySale.CLOSED;
+        tokenRoyaltyState = TokenRoyaltyState.CLOSED;
         initilized = true;
         _CPToken();
         
@@ -92,7 +95,9 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
 
 
     function toggleAutomation() external onlyOwner{
+        require(msg.sender == ITokenRoyaltyAdapter(royaltyAdapter).getPicardyReg() || msg.sender == owner, "toggleAutomation: Un Auth");
         automationStarted = !automationStarted;
+        emit AutomationStarted(false);
     }
 
     // TODO: add the pending balance function to be called by payMaster
@@ -144,16 +149,17 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         }    
     }
 
-    function updateRoyalty(uint amount) external {
+    function updateRoyalty(uint amount, address tokenAddress) external {
         address payMaster = ITokenRoyaltyAdapter(royaltyAdapter).getPayMaster();
         require(tokenRoyaltyState == TokenRoyaltyState.CLOSED, "royalty sale still open");
-        require (msg.sender == payMaster, "updateRoyalty: Un-auth");
+        require (msg.sender == payMaster || msg.sender == owner, "updateRoyalty: Un-auth");
         for(uint i = 0; i < royalty.royaltyPoolMembers.length; i++){
             address poolMember = royalty.royaltyPoolMembers[i];
             uint balance = IERC20(royalty.royaltyCPToken).balanceOf(poolMember);
-            uint poolSize = (balance * 100) / royalty.royaltyPoolBalance;
-            uint _amount = (poolSize * amount) / 100;
-            royaltyBalance[poolMember] += _amount;
+            uint poolSize = (balance * 10000) / royalty.royaltyPoolBalance;
+            uint _amount = (poolSize * amount) / 10000;
+
+            ercRoyaltyBalance[poolMember][tokenAddress] += _amount;
         }
         lastRoyaltyUpdate = block.timestamp;
         emit RoyaltyBalanceUpdated(block.timestamp, amount);
@@ -165,7 +171,8 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         require(royalty.royaltyPoolBalance > 0, "Pool balance empty");
         (address royaltyAddress, uint royaltyPercentage) = ITokenRoyaltySaleFactory(royalty.tokenRoyaltyFactory).getRoyaltyDetails();
         uint balance = royalty.royaltyPoolBalance;
-        uint txFee = (balance * royaltyPercentage) / 100;
+        uint royaltyPercentageToBips = royaltyPercentage * 100;
+        uint txFee = (balance * royaltyPercentageToBips) / 10000;
         uint toWithdraw = balance - txFee;
         ownerWithdrawn = true;
         address _owner = payable(owner);
@@ -203,7 +210,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         tokenRoyaltyState = TokenRoyaltyState.CLOSED;
     }
 
-    function changeUpdateInterval(address _updateInterval) external {
+    function changeUpdateInterval(uint _updateInterval) external {
       updateInterval = _updateInterval * time;  
     }
 
@@ -229,7 +236,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
 
     function getMemberPoolSize(address addr) external view returns(uint){
         uint balance = IERC20(royalty.royaltyCPToken).balanceOf(addr);
-        uint poolSize = (balance * 100) / royalty.royaltyPoolBalance;
+        uint poolSize = (balance * 10000) / royalty.royaltyPoolBalance;
         return poolSize;
     }
 
@@ -277,8 +284,8 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         for(uint i = 0; i < royalty.royaltyPoolMembers.length; i++){
             address poolMember = royalty.royaltyPoolMembers[i];
             uint balance = IERC20(royalty.royaltyCPToken).balanceOf(poolMember);
-            uint poolSize = (balance * 100) / royalty.royaltyPoolBalance;
-            uint _amount = (poolSize * amount) / 100;
+            uint poolSize = (balance * 10000) / royalty.royaltyPoolBalance;
+            uint _amount = (poolSize * amount) / 10000;
             royaltyBalance[poolMember] += _amount;
         }
         lastRoyaltyUpdate = block.timestamp;
@@ -297,7 +304,7 @@ interface IPicardyTokenRoyaltySale {
     function start() external ;
 
     /// @notice buys royalty
-    function buyRoyalty(uint _amount) external payable;
+    function buyRoyalty(uint _amount, address _holder) external payable;
 
     /// @notice gets the pool members
     function getPoolMembers() external view returns (address[] memory);
@@ -323,7 +330,7 @@ interface IPicardyTokenRoyaltySale {
     function getTokenDetails() external view returns(string memory, string memory);
 
     /// @notice updates the royalty balance
-    function updateRoyalty(uint amount) external;
+    function updateRoyalty(uint amount, address tokenAddress) external;
 
     function getCreator() external view returns (address);
 
@@ -331,10 +338,10 @@ interface IPicardyTokenRoyaltySale {
     function withdraw() external;
 
     /// @notice withdraws the royalty balance
-    function withdrawRoyalty(uint _amount) external;
+    function withdrawRoyalty(uint _amount, address _holder) external;
 
-    function withdrawRoyalty2(uint _amount) external;
+    function withdrawRoyalty2(uint _amount, address _holder) external;
 
-    function setupAutomation(address _regAddr, uint256 _updateInterval, address _royaltyAdapter) external;
+    function setupAutomation(uint256 _updateInterval, address _royaltyAdapter) external;
 
 }
