@@ -95,7 +95,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
     }
 
 
-    function toggleAutomation() external onlyOwner{
+    function toggleAutomation() external {
         require(msg.sender == ITokenRoyaltyAdapter(royaltyAdapter).getPicardyReg() || msg.sender == owner, "toggleAutomation: Un Auth");
         automationStarted = !automationStarted;
         emit AutomationStarted(false);
@@ -354,5 +354,7 @@ interface IPicardyTokenRoyaltySale {
     function withdrawRoyalty2(uint _amount, address _holder) external;
 
     function setupAutomation(uint256 _updateInterval, address _royaltyAdapter) external;
+
+    function toggleAutomation() external ;
 
 }

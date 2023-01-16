@@ -176,18 +176,18 @@ contract RoyaltyAutomationRegistrar {
 
     // TODO: add a function to cancle automation
 
-    function cancleAutomation(address royaltyAddress) external {
+    function cancleAutomation(address royaltyAddress, uint _royaltyType) external {
         require(hasReg[royaltyAddress] == true, "not registered");
         RegisteredDetails memory i_registeredDetails = registeredDetails[royaltyAddress];
-        
+       
         require(i_registeredDetails.adminAddress == msg.sender, "not admin");
-        if (i_registeredDetails.royaltyType == 0){
+        if (_royaltyType == 0){
             IPicardyNftRoyaltySale(royaltyAddress).toggleAutomation();
         }
-        else if (i_registeredDetails.royaltyType == 1){
+        else if (_royaltyType == 1){
             IPicardyTokenRoyaltySale(royaltyAddress).toggleAutomation();
         }
-        i_payMaster.removeRoyaltyData(i_registeredDetails.royaltyAdapter, royaltyAddress);
+        i_payMaster.removeRoyaltyData(i_registeredDetails.adapterAddress, royaltyAddress);
         hasReg[royaltyAddress] = false;
         i_registry.cancelUpkeep(i_registeredDetails.upkeepId);
         emit AutomationCancled(royaltyAddress);
@@ -199,21 +199,17 @@ contract RoyaltyAutomationRegistrar {
         require(hasReg[details.royaltyAddress] == false, "automation active");
         bytes memory encryptedEmail = abi.encode(details.email);
         
-        if (i_registeredDetails.royaltyType == 0){
-            IPicardyNftRoyaltySale royalty = IPicardyNftRoyaltySale(royaltyAddress);
-            royalty.toggleAutomation();
+        if (details.royaltyType == 0){
+            IPicardyNftRoyaltySale(details.royaltyAddress).toggleAutomation();
         }
-        else if (i_registeredDetails.royaltyType == 1){
-            IPicardyTokenRoyaltySale royalty = IPicardyTokenRoyaltySale(royaltyAddress);
-            royalty.toggleAutomation();
+        else if (details.royaltyType == 1){
+            IPicardyTokenRoyaltySale(details.royaltyAddress).toggleAutomation();
         }
 
-        i_payMaster.addRoyaltyData(royaltyAdapter, i_registeredDetails.royaltyAddress, i_registeredDetails.royaltyType);
-        emit AutomationReset(royaltyAddress);
+        i_payMaster.addRoyaltyData(i_registeredDetails.adapterAddress, details.royaltyAddress, details.royaltyType);
 
         (State memory state, Config memory _c, address[] memory _k) = i_registry.getState();
         uint256 oldNonce = state.nonce;
-        
         PayloadDetails memory payloadDetails = PayloadDetails(
             details.name, 
             encryptedEmail, 
@@ -224,9 +220,7 @@ contract RoyaltyAutomationRegistrar {
             details.amount, 
             0
         );
-
         bytes memory payload = _getPayload(payloadDetails);
-
         i_link.transferAndCall(registrar, details.amount, bytes.concat(registerSig, payload));
         
         (state, _c, _k) = i_registry.getState();
@@ -235,7 +229,7 @@ contract RoyaltyAutomationRegistrar {
             uint256 upkeepID = uint256(keccak256(abi.encodePacked( blockhash(block.number - 1), address(i_registry), uint32(oldNonce)))); 
             i_registeredDetails.upkeepId = upkeepID;
             hasReg[details.royaltyAddress] = true;
-            emit AutomationRestart(details.royaltyAddress);
+            emit AutomationRestarted(details.royaltyAddress);
         } else {
             revert("auto-approve disabled");
         }
