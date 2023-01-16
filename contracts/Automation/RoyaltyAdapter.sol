@@ -54,14 +54,14 @@ contract RoyaltyAdapter is ChainlinkClient {
         (, uint link) = contractBalances();
         require (link > ORACLE_PAYMENT,"royalty adapter: link balance low");
         require (msg.sender == royaltySaleAddress , "royalty adapter: Un-Auth");
-        (,,,string memory songTitle,string memory artisteName) = IPicardyNftRoyaltySale(royaltySaleAddress).getTokenDetails();
+        (,,,string memory name,string memory creatorName) = IPicardyNftRoyaltySale(royaltySaleAddress).getTokenDetails();
 
         Chainlink.Request memory req = buildOperatorRequest(
             stringToBytes32(jobId),
             this.fulfillrequestRoyaltyAmount.selector
         );
-        req.add("artisteName", artisteName);
-        req.add("songTitle", songTitle);
+        req.add("creatorName", creatorName);
+        req.add("name", name);
         req.add("ticker", ticker);
         sendOperatorRequestTo(oracle, req, ORACLE_PAYMENT);
         

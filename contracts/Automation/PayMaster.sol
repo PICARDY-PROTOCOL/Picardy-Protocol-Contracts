@@ -94,23 +94,33 @@ contract PayMaster {
     }
 
     function sendPayment(address _adapter, string memory _ticker, uint256 _amount) public {
-        require(_adapter != address(0), "addETHReserve: Invalid adapter");
+        require(_adapter != address(0), "sendPayment: Invalid adapter");
+        require(tickerExist[_ticker] == true, "sendPayment: Token not registered");
         address _royaltyAddress = royaltyData[_adapter].royaltyAddress;
         require(isRegistered[_adapter][_royaltyAddress] == true, "sendPayment: Not registered");
         require(msg.sender == _adapter, "sendPayment: Un-Auth (adapter)");
+        
         uint royaltyType = royaltyData[_adapter].royaltyType;
         uint balance = royaltyReserve[_adapter][_royaltyAddress][_ticker];
+        
         if(balance < _amount){
+            
             royaltyPending[_adapter][_royaltyAddress][_ticker] += _amount;
             emit PaymentPending(_royaltyAddress, _ticker, _amount);
+        
         } else {
+            
             if(keccak256(bytes(_ticker)) == keccak256(bytes("ETH"))){
             royaltyReserve[_adapter][_royaltyAddress][_ticker] -= _amount;
             royaltyPaid[_adapter][_royaltyAddress][_ticker] += _amount;
             (bool success, ) = payable(_royaltyAddress).call{value: _amount}("");
             require (success);
+            
             } else {
+                
                 require(tokenAddress[_ticker] != address(0), "sendPayment: Token not registered");
+                require(royaltyReserve[_adapter][_royaltyAddress][_ticker] >= _amount, "low reserve balance");
+                
                 if(royaltyType == 0){
                     require(IRoyaltyAdapter(_adapter).getRoyaltySaleAddress() == _royaltyAddress, "Royalty address invalid");
                     royaltyReserve[_adapter][_royaltyAddress][_ticker] -= _amount;
@@ -122,6 +132,7 @@ contract PayMaster {
                     royaltyPaid[_adapter][_royaltyAddress][_ticker] += _amount;
                     IPicardyTokenRoyaltySale(_royaltyAddress).updateRoyalty(_amount, tokenAddress[_ticker]);
                 }
+
                 (bool success) = IERC20(tokenAddress[_ticker]).transfer(_royaltyAddress, _amount);
                 require (success);    
             }
@@ -131,20 +142,28 @@ contract PayMaster {
     }
 
     function refundPending(address _adapter, string memory _ticker, uint256 _amount) public {
-        require(_adapter != address(0), "addETHReserve: Invalid adapter");
+        require(_adapter != address(0), "refundPending: Invalid adapter");
+        require(tickerExist[_ticker] == true, "refundPending: Token not registered");
         address _royaltyAddress = royaltyData[_adapter].royaltyAddress;
-        require(isRegistered[_adapter][_royaltyAddress] == true, "sendPayment: Not registered");
-        require(royaltyReserve[_adapter][_royaltyAddress][_ticker] >= _amount, "low reserve balance");
-        require(_amount <= royaltyPending[_adapter][_royaltyAddress][_ticker], "amount is greather than pending royalty");
+        require(isRegistered[_adapter][_royaltyAddress] == true, "refundPending: Not registered");
+        require(royaltyReserve[_adapter][_royaltyAddress][_ticker] >= _amount, "refundPending: low reserve balance");
+        require(_amount <= royaltyPending[_adapter][_royaltyAddress][_ticker], "refundPending: amount is greather than pending royalty");
+        
         uint royaltyType = royaltyData[_adapter].royaltyType;
+        
         if(keccak256(bytes(_ticker)) == keccak256(bytes("ETH"))){
+            
             royaltyReserve[_adapter][_royaltyAddress][_ticker] -= _amount;
             royaltyPending[_adapter][_royaltyAddress][_ticker] -= _amount;
             royaltyPaid[_adapter][_royaltyAddress][_ticker] += _amount;
             (bool success, ) = payable(_royaltyAddress).call{value: _amount}("");
             require (success);
+        
         } else {
+            
             require(tokenAddress[_ticker] != address(0), "sendPayment: Token not registered");
+            require(royaltyReserve[_adapter][_royaltyAddress][_ticker] >= _amount, "low reserve balance");
+            
             if(royaltyType == 0){
                 require(IRoyaltyAdapter(_adapter).getRoyaltySaleAddress() == _royaltyAddress, "Royalty address invalid");
                  royaltyReserve[_adapter][_royaltyAddress][_ticker] -= _amount;
@@ -158,6 +177,7 @@ contract PayMaster {
                 royaltyPaid[_adapter][_royaltyAddress][_ticker] += _amount;
                 IPicardyTokenRoyaltySale(_royaltyAddress).updateRoyalty(_amount, tokenAddress[_ticker]);
             }
+            
             (bool success) = IERC20(tokenAddress[_ticker]).transfer(_royaltyAddress, _amount);
             require (success);    
         }

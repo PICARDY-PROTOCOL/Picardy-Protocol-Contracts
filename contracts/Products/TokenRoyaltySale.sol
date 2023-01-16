@@ -81,7 +81,8 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         require(tokenRoyaltyState == TokenRoyaltyState.CLOSED);
         _start();
     }
-        //call this to start automtion of the royalty contract, deposit link for automation
+    
+    //This function is called by picardy royalty registrar, PS: royalty adapter contract needs LINK for automation to work
     function setupAutomation(uint256 _updateInterval, address _royaltyAdapter) external { 
         require(msg.sender == ITokenRoyaltyAdapter(_royaltyAdapter).getPicardyReg(), "setupAutomation: only picardy reg");
         require (automationStarted == false, "startAutomation: automation started");
@@ -149,10 +150,12 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         }    
     }
 
+     /**
+        @dev This function can only be called by the royaltySale owner or payMaster contract to pay royalty in ERC20.    
+    */
     function updateRoyalty(uint amount, address tokenAddress) external {
-        address payMaster = ITokenRoyaltyAdapter(royaltyAdapter).getPayMaster();
         require(tokenRoyaltyState == TokenRoyaltyState.CLOSED, "royalty sale still open");
-        require (msg.sender == payMaster || msg.sender == owner, "updateRoyalty: Un-auth");
+        require (msg.sender == getUpdateRoyaltyCaller(), "updateRoyalty: Un-auth");
         for(uint i = 0; i < royalty.royaltyPoolMembers.length; i++){
             address poolMember = royalty.royaltyPoolMembers[i];
             uint balance = IERC20(royalty.royaltyCPToken).balanceOf(poolMember);
@@ -163,6 +166,14 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         }
         lastRoyaltyUpdate = block.timestamp;
         emit RoyaltyBalanceUpdated(block.timestamp, amount);
+    }
+
+        function getUpdateRoyaltyCaller() private view returns (address) {
+        if (automationStarted == true){
+            return ITokenRoyaltyAdapter(royaltyAdapter).getPayMaster();
+        } else {
+            return owner;
+        }   
     }
 
     function withdraw() external onlyOwner {
