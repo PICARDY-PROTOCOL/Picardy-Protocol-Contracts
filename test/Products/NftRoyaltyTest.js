@@ -112,7 +112,6 @@ describe("NftRoyaltySale", function () {
         .setupAutomation(timeInterval, royaltyAdapter.address)
     ).to.be.rejectedWith(Error);
   });
-
   // it(" only owner and royaltyRegistrar should toggle automation", async () => {
   //   const [
   //     hubAdmin,
