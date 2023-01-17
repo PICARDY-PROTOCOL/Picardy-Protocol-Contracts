@@ -1,5 +1,5 @@
 {
-  "name": "picardy_protocol",
+  "name": "picardy_protocol_contracts",
   "dependencies": {
     "@chainlink/contracts": "^0.6.0",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.7",
@@ -22,5 +22,24 @@
   },
   "scripts": {
     "slither": "slither . --solc-remaps '@openzeppelin=node_modules/@openzeppelin @chainlink=node_modules/@chainlink' --exclude naming-convention,external-function,low-level-calls"
-  }
+  },
+  "description": "Picardy protocol exposes a number of factories that are used to create the different products offered by the protocol. Also utilizing chainlink keepers for automation and external adapter to bring in realtime music royalty data on chain.\r Using the factories is fairly straight forward as each contract exposes an interface to be used with other smart contracts. Another way to use the protocol is with the various contracts ABI (Application binary interface) or both depending on your use case.",
+  "version": "1.0.0",
+  "main": "hardhat.config.js",
+  "directories": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PICARDY-PROTOCOL/Picardy-Protocol-Contracts.git"
+  },
+  "keywords": [
+    "Picardy_Protocal_Contracts"
+  ],
+  "author": "Joshua Obigwe (blok_hamster)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/PICARDY-PROTOCOL/Picardy-Protocol-Contracts/issues"
+  },
+  "homepage": "https://github.com/PICARDY-PROTOCOL/Picardy-Protocol-Contracts#readme"
 }

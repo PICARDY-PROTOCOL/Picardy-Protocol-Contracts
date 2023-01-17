@@ -1,6 +1,4 @@
 
-// can update pending payment
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 pragma experimental ABIEncoderV2;
@@ -98,7 +96,8 @@ contract PayMaster {
         require(isRegistered[_adapter][_royaltyAddress] == true, "addERC20Reserve: Not registered");
         require(tokenAddress[_ticker] != address(0), "addERC20Reserve: Token not registered");
         require(IERC20(tokenAddress[_ticker]).balanceOf(msg.sender) >= _amount, "addERC20Reserve: Insufficient balance");
-        IERC20(tokenAddress[_ticker]).transferFrom(msg.sender, address(this), _amount);
+        (bool success) = IERC20(tokenAddress[_ticker]).transferFrom(msg.sender, address(this), _amount);
+        require(success, "addERC20Reserve: Transfer failed");
         royaltyReserve[_adapter][_royaltyAddress][_ticker] += _amount;
     }
 
@@ -146,7 +145,6 @@ contract PayMaster {
                 require (success);    
             }
         }
-
         emit RoyaltyPaymentSent(_royaltyAddress, _ticker, _amount); 
     }
 

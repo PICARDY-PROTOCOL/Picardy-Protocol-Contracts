@@ -29,6 +29,7 @@ contract RoyaltyAutomationRegistrar {
     event AutomationFunded(address indexed royaltyAddress, uint96 indexed amount);
     event AutomationCancled(address indexed royaltyAddress);
     event AutomationRestarted(address indexed royaltyAddress);
+    event AutomationToggled(address indexed royaltyAddress);
     struct RegisteredDetails {
         address royaltyAddress;
         address adapterAddress;
@@ -176,6 +177,21 @@ contract RoyaltyAutomationRegistrar {
 
     // TODO: add a function to cancle automation
 
+    function toggleAutomation(address royaltyAddress, uint _royaltyType) external {
+        require(hasReg[royaltyAddress] == true, "not registered");
+        RegisteredDetails memory i_registeredDetails = registeredDetails[royaltyAddress];
+       
+        require(i_registeredDetails.adminAddress == msg.sender, "not admin");
+        if (_royaltyType == 0){
+            IPicardyNftRoyaltySale(royaltyAddress).toggleAutomation();
+        }
+        else if (_royaltyType == 1){
+            IPicardyTokenRoyaltySale(royaltyAddress).toggleAutomation();
+        }
+        
+        emit AutomationToggled(royaltyAddress);
+    }
+
     function cancleAutomation(address royaltyAddress, uint _royaltyType) external {
         require(hasReg[royaltyAddress] == true, "not registered");
         RegisteredDetails memory i_registeredDetails = registeredDetails[royaltyAddress];
@@ -191,48 +207,6 @@ contract RoyaltyAutomationRegistrar {
         hasReg[royaltyAddress] = false;
         i_registry.cancelUpkeep(i_registeredDetails.upkeepId);
         emit AutomationCancled(royaltyAddress);
-    }
-
-    function resetAutomation(RegistrationDetails memory details) external {
-        RegisteredDetails memory i_registeredDetails = registeredDetails[details.royaltyAddress];
-        require(i_registeredDetails.adminAddress == msg.sender, "not admin");
-        require(hasReg[details.royaltyAddress] == false, "automation active");
-        bytes memory encryptedEmail = abi.encode(details.email);
-        
-        if (details.royaltyType == 0){
-            IPicardyNftRoyaltySale(details.royaltyAddress).toggleAutomation();
-        }
-        else if (details.royaltyType == 1){
-            IPicardyTokenRoyaltySale(details.royaltyAddress).toggleAutomation();
-        }
-
-        i_payMaster.addRoyaltyData(i_registeredDetails.adapterAddress, details.royaltyAddress, details.royaltyType);
-
-        (State memory state, Config memory _c, address[] memory _k) = i_registry.getState();
-        uint256 oldNonce = state.nonce;
-        PayloadDetails memory payloadDetails = PayloadDetails(
-            details.name, 
-            encryptedEmail, 
-            details.royaltyAddress, 
-            details.gasLimit, 
-            i_registeredDetails.adminAddress, 
-            "0x", 
-            details.amount, 
-            0
-        );
-        bytes memory payload = _getPayload(payloadDetails);
-        i_link.transferAndCall(registrar, details.amount, bytes.concat(registerSig, payload));
-        
-        (state, _c, _k) = i_registry.getState();
-        uint256 newNonce = state.nonce;
-        if (newNonce == oldNonce + 1) {
-            uint256 upkeepID = uint256(keccak256(abi.encodePacked( blockhash(block.number - 1), address(i_registry), uint32(oldNonce)))); 
-            i_registeredDetails.upkeepId = upkeepID;
-            hasReg[details.royaltyAddress] = true;
-            emit AutomationRestarted(details.royaltyAddress);
-        } else {
-            revert("auto-approve disabled");
-        }
     }
 
     // TODO: add a function to withdraw funds in cancled automation
@@ -310,4 +284,6 @@ interface IRoyaltyAutomationRegistrar {
     function resetAutomation(RegistrationDetails memory details) external;
 
     function getRegisteredDetails(address royaltyAddress) external view returns(RegisteredDetails memory);
+
+    function toggleAutomation(address royaltyAddress, uint _royaltyType) external;
 }
