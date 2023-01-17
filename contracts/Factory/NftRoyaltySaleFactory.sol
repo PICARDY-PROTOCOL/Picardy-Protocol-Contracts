@@ -28,7 +28,8 @@ contract NftRoyaltySaleFactory is Context , ReentrancyGuard {
         string name;
         string symbol; 
         string initBaseURI;
-        string artisteName;
+        string creatorName;
+        address creator;
     }
 
     struct NftRoyaltyDetails {
@@ -65,10 +66,10 @@ contract NftRoyaltySaleFactory is Context , ReentrancyGuard {
         bytes32 salt = keccak256(abi.encodePacked(newRId, block.number, block.timestamp));
         address payable nftRoyalty = payable(Clones.cloneDeterministic(nftRoyaltySaleImplementation, salt));
         NftRoyaltyDetails memory newNftRoyaltyDetails = NftRoyaltyDetails(newRId, details.percentage, details.name, nftRoyalty);
-        royaltySaleAddress[details.artisteName][details.name] = nftRoyalty;
+        royaltySaleAddress[details.creatorName][details.name] = nftRoyalty;
         nftRoyaltyDetails[nftRoyalty] = newNftRoyaltyDetails;
         nftRoyaltyId++;
-        NftRoyaltySale(nftRoyalty).initilize(details.maxSupply, details.maxMintAmount, details.cost,  details.percentage , details.name, details.symbol, details.initBaseURI, details.artisteName, _msgSender(), address(this));
+        NftRoyaltySale(nftRoyalty).initilize(details.maxSupply, details.maxMintAmount, details.cost,  details.percentage , details.name, details.symbol, details.initBaseURI, details.creatorName, details.creator, address(this), _msgSender());
         emit NftRoyaltySaleCreated(newRId,_msgSender(), nftRoyalty);
         return (nftRoyalty);
     }
@@ -121,7 +122,8 @@ interface INftRoyaltySaleFactory {
         string name;
         string symbol; 
         string initBaseURI;
-        string artisteName;
+        string creatorName;
+        address creator;
     }
 
     function createNftRoyalty(Details memory details) external returns(address);

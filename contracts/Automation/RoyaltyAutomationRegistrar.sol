@@ -30,11 +30,13 @@ contract RoyaltyAutomationRegistrar {
     event AutomationCancled(address indexed royaltyAddress);
     event AutomationRestarted(address indexed royaltyAddress);
     event AutomationToggled(address indexed royaltyAddress);
+    
     struct RegisteredDetails {
         address royaltyAddress;
         address adapterAddress;
         address adminAddress;
         uint upkeepId;
+        uint royaltyType;
     }
 
     struct RegistrationDetails {
@@ -97,14 +99,16 @@ contract RoyaltyAutomationRegistrar {
 
     function register(RegistrationDetails memory details) external {
         require(hasReg[details.royaltyAddress] == false, "already registered");
+        require(i_link.balanceOf(msg.sender) >= details.amount, "Insufficient LINK for automation registration");
+        require(i_payMaster.checkTickerExist(details.ticker), "Ticker not accepted");
         
         bytes memory encryptedEmail = abi.encode(details.email);
         address royaltyAdapter;
         
-        require(i_payMaster.checkTickerExist(details.ticker), "Ticker not accepted");
 
         if (details.royaltyType == 0){   
             IPicardyNftRoyaltySale royalty = IPicardyNftRoyaltySale(details.royaltyAddress);
+            require(msg.sender == royalty.getOwner(), "Only owner can register automation");   
             royaltyAdapter = IRoyaltyAdapterFactory(adapterFactory).createAdapter(
                 details.royaltyAddress, 
                 details.royaltyType, 
@@ -119,6 +123,7 @@ contract RoyaltyAutomationRegistrar {
         }
         else if (details.royaltyType == 1){
             IPicardyTokenRoyaltySale royalty = IPicardyTokenRoyaltySale(details.royaltyAddress);
+            require(msg.sender == royalty.getOwner(), "Only owner can register automation");
             royaltyAdapter = IRoyaltyAdapterFactory(adapterFactory).createAdapter(
                 details.royaltyAddress, 
                 details.royaltyType, 
@@ -155,7 +160,7 @@ contract RoyaltyAutomationRegistrar {
         uint256 newNonce = state.nonce;
         if (newNonce == oldNonce + 1) {
             uint256 upkeepID = uint256(keccak256(abi.encodePacked( blockhash(block.number - 1), address(i_registry), uint32(oldNonce)))); 
-            RegisteredDetails memory i_registeredDetails = RegisteredDetails( details.royaltyAddress, royaltyAdapter, details.adminAddress, upkeepID);
+            RegisteredDetails memory i_registeredDetails = RegisteredDetails( details.royaltyAddress, royaltyAdapter, details.adminAddress, upkeepID, details.royaltyType);
             registeredDetails[details.royaltyAddress] = i_registeredDetails;
             hasReg[details.royaltyAddress] = true;
             emit AutomationRegistered(details.royaltyAddress);
@@ -165,8 +170,6 @@ contract RoyaltyAutomationRegistrar {
     }
 
     function fundAutomation(address royaltyAddress, uint96 amount) external {
-        i_link = LinkTokenInterface(link);
-        i_registry = AutomationRegistryInterface(registry);
         require(hasReg[royaltyAddress] == true, "not registered");
         require(i_link.balanceOf(msg.sender) >= amount, "insufficent link balancce");
         RegisteredDetails memory i_registeredDetails = registeredDetails[royaltyAddress];
@@ -175,35 +178,36 @@ contract RoyaltyAutomationRegistrar {
         emit AutomationFunded(royaltyAddress, amount);
     }
 
-    // TODO: add a function to cancle automation
-
-    function toggleAutomation(address royaltyAddress, uint _royaltyType) external {
+    function toggleAutomation(address royaltyAddress) external {
         require(hasReg[royaltyAddress] == true, "not registered");
         RegisteredDetails memory i_registeredDetails = registeredDetails[royaltyAddress];
        
         require(i_registeredDetails.adminAddress == msg.sender, "not admin");
-        if (_royaltyType == 0){
+        
+        if (i_registeredDetails.royaltyType == 0){
             IPicardyNftRoyaltySale(royaltyAddress).toggleAutomation();
         }
-        else if (_royaltyType == 1){
+        else if (i_registeredDetails.royaltyType == 1){
             IPicardyTokenRoyaltySale(royaltyAddress).toggleAutomation();
         }
         
         emit AutomationToggled(royaltyAddress);
     }
 
-    function cancleAutomation(address royaltyAddress, uint _royaltyType) external {
+    //this function can only be called once the automation is cancelled
+    function cancleAutomation(address royaltyAddress) external {
         require(hasReg[royaltyAddress] == true, "not registered");
         RegisteredDetails memory i_registeredDetails = registeredDetails[royaltyAddress];
        
         require(i_registeredDetails.adminAddress == msg.sender, "not admin");
-        if (_royaltyType == 0){
+        if (i_registeredDetails.royaltyType == 0){
             IPicardyNftRoyaltySale(royaltyAddress).toggleAutomation();
         }
-        else if (_royaltyType == 1){
+        else if (i_registeredDetails.royaltyType == 1){
             IPicardyTokenRoyaltySale(royaltyAddress).toggleAutomation();
         }
         i_payMaster.removeRoyaltyData(i_registeredDetails.adapterAddress, royaltyAddress);
+        delete registeredDetails[royaltyAddress];
         hasReg[royaltyAddress] = false;
         i_registry.cancelUpkeep(i_registeredDetails.upkeepId);
         emit AutomationCancled(royaltyAddress);
@@ -234,8 +238,12 @@ contract RoyaltyAutomationRegistrar {
         payMaster = _payMaster;
     }
 
-    function getRegisteredDetails(address royaltyAddress) external view returns(RegisteredDetails memory) {
-        return registeredDetails[royaltyAddress];
+    function getRoyaltyAdapterAddress( address _royaltyAddress) external view returns(address){
+        return registeredDetails[_royaltyAddress].adapterAddress;
+    }
+
+    function getRegisteredDetails(address _royaltyAddress) external view returns(RegisteredDetails memory) {
+        return registeredDetails[_royaltyAddress];
     }
 
     function _getPayload(PayloadDetails memory payloadDetails) internal view returns(bytes memory){
@@ -285,5 +293,7 @@ interface IRoyaltyAutomationRegistrar {
 
     function getRegisteredDetails(address royaltyAddress) external view returns(RegisteredDetails memory);
 
-    function toggleAutomation(address royaltyAddress, uint _royaltyType) external;
+    function toggleAutomation(address royaltyAddress) external;
+
+    function getRoyaltyAdapterAddress( address _royaltyAddress) external view returns(address);
 }

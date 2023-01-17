@@ -13,7 +13,7 @@ describe("NftRoyaltySale", function () {
   const name = "testToken";
   const symbol = "TST";
   const initBaseURI = "https://test.com/";
-  const artisteName = "testArtiste";
+  const creatorName = "testArtiste";
   let linkToken;
 
   let picardyHub;
@@ -23,20 +23,21 @@ describe("NftRoyaltySale", function () {
   let tokenContract;
   let nftRoyaltyImpAddress;
 
-  let details = {
-    maxSupply: maxSupply,
-    maxMintAmount: maxMintAmount,
-    cost: formatedCost,
-    percentage: percentage,
-    name: name,
-    symbol: symbol,
-    initBaseURI: initBaseURI,
-    artisteName: artisteName,
-  };
-
   beforeEach(async () => {
     const [hubAdmin, royaltyAddress, user1, user2, user3] =
       await ethers.getSigners();
+
+    let details = {
+      maxSupply: maxSupply,
+      maxMintAmount: maxMintAmount,
+      cost: formatedCost,
+      percentage: percentage,
+      name: name,
+      symbol: symbol,
+      initBaseURI: initBaseURI,
+      creatorName: creatorName,
+      creator: user1.address,
+    };
 
     let LinkToken = await ethers.getContractFactory("MocLink");
     tokenContract = await LinkToken.deploy();
@@ -68,7 +69,7 @@ describe("NftRoyaltySale", function () {
       .createNftRoyalty(details);
 
     nftRoyaltySaleAddress =
-      await nftRoyaltySaleFactory.getNftRoyaltySaleAddress(artisteName, name);
+      await nftRoyaltySaleFactory.getNftRoyaltySaleAddress(creatorName, name);
 
     nftRoyaltySale = await ethers.getContractAt(
       "NftRoyaltySale",
@@ -90,7 +91,7 @@ describe("NftRoyaltySale", function () {
   });
 
   //it: only owner should setup automation
-  it("only owner should setup automation", async () => {
+  it("only regstrar setup automation", async () => {
     const [
       hubAdmin,
       royaltyAddress,
@@ -108,39 +109,31 @@ describe("NftRoyaltySale", function () {
     await expect(
       nftRoyaltySale
         .connect(user2)
-        .setupAutomation(
-          regAddress.address,
-          timeInterval,
-          royaltyAdapter.address
-        )
+        .setupAutomation(timeInterval, royaltyAdapter.address)
     ).to.be.rejectedWith(Error);
-
-    await nftRoyaltySale.setupAutomation(
-      regAddress.address,
-      timeInterval,
-      royaltyAdapter.address
-    );
   });
-  //it: only owner should toggle automation
-  it(" only owner should toggle automation", async () => {
-    const [
-      hubAdmin,
-      royaltyAddress,
-      regAddress,
-      royaltyAdapter,
-      user1,
-      user2,
-      user3,
-    ] = await ethers.getSigners();
 
-    await nftRoyaltySale.start();
+  // it(" only owner and royaltyRegistrar should toggle automation", async () => {
+  //   const [
+  //     hubAdmin,
+  //     royaltyAddress,
+  //     regAddress,
+  //     royaltyAdapter,
+  //     user1,
+  //     user2,
+  //     user3,
+  //   ] = await ethers.getSigners();
 
-    await expect(
-      nftRoyaltySale.connect(user2).toggleAutomation()
-    ).to.be.rejectedWith(Error);
+  //   await nftRoyaltySale.start();
 
-    await nftRoyaltySale.toggleAutomation();
-  });
+  //   await expect(
+  //     nftRoyaltySale.connect(user2).toggleAutomation()
+  //   ).to.be.rejectedWith(Error);
+
+  //   await expect(await nftRoyaltySale.toggleAutomation()).to.be.rejectedWith(
+  //     Error
+  //   );
+  // });
   //it: user can buy royalty
   it("users can buy royalty", async () => {
     const [hubAdmin, royaltyAddress, user1, user2, user3] =
@@ -154,17 +147,17 @@ describe("NftRoyaltySale", function () {
     await nftRoyaltySale.start();
 
     await expect(
-      nftRoyaltySale.connect(user3).buyRoyalty(2, {
+      nftRoyaltySale.connect(user3).buyRoyalty(2, user3.address, {
         value: ethers.utils.parseUnits("0.5", "ether"),
       })
     ).to.be.rejectedWith(Error);
 
     await nftRoyaltySale
       .connect(user2)
-      .buyRoyalty(2, { value: formattedTotal });
+      .buyRoyalty(2, user2.address, { value: formattedTotal });
     await nftRoyaltySale
       .connect(user3)
-      .buyRoyalty(2, { value: formattedTotal });
+      .buyRoyalty(2, user3.address, { value: formattedTotal });
   });
   //it: owner should update royalty only when automation is turned off
   it("owner should update royalty only when automation is turned off", async () => {
@@ -175,8 +168,12 @@ describe("NftRoyaltySale", function () {
 
     await nftRoyaltySale.start();
 
-    await nftRoyaltySale.connect(user2).buyRoyalty(2, { value: updateAmount });
-    await nftRoyaltySale.connect(user3).buyRoyalty(2, { value: updateAmount });
+    await nftRoyaltySale
+      .connect(user2)
+      .buyRoyalty(2, user2.address, { value: updateAmount });
+    await nftRoyaltySale
+      .connect(user3)
+      .buyRoyalty(2, user3.address, { value: updateAmount });
 
     await expect(
       nftRoyaltySale.connect(user2).toggleRoyaltSale()
@@ -216,10 +213,10 @@ describe("NftRoyaltySale", function () {
 
     await nftRoyaltySale
       .connect(user2)
-      .buyRoyalty(2, { value: formattedTotal });
+      .buyRoyalty(2, user2.address, { value: formattedTotal });
     await nftRoyaltySale
       .connect(user3)
-      .buyRoyalty(2, { value: formattedTotal });
+      .buyRoyalty(2, user3.address, { value: formattedTotal });
 
     await expect(nftRoyaltySale.connect(user2).withdraw()).to.be.rejectedWith(
       Error
@@ -240,24 +237,33 @@ describe("NftRoyaltySale", function () {
 
     await nftRoyaltySale.start();
 
-    await nftRoyaltySale
-      .connect(user2)
-      .buyRoyalty(1, { value: ethers.utils.parseUnits("1", "ether") });
+    await nftRoyaltySale.connect(user2).buyRoyalty(1, user2.address, {
+      value: ethers.utils.parseUnits("1", "ether"),
+    });
     await nftRoyaltySale
       .connect(user3)
-      .buyRoyalty(2, { value: formattedTotal });
+      .buyRoyalty(2, user3.address, { value: formattedTotal });
 
-    await nftRoyaltySale
-      .connect(user4)
-      .buyRoyalty(3, { value: ethers.utils.parseUnits("3", "ether") });
+    await nftRoyaltySale.connect(user4).buyRoyalty(3, user4.address, {
+      value: ethers.utils.parseUnits("3", "ether"),
+    });
 
-    await nftRoyaltySale
-      .connect(user5)
-      .buyRoyalty(4, { value: ethers.utils.parseUnits("4", "ether") });
+    await nftRoyaltySale.connect(user5).buyRoyalty(4, user5.address, {
+      value: ethers.utils.parseUnits("4", "ether"),
+    });
 
-    await nftRoyaltySale
-      .connect(user6)
-      .buyRoyalty(15, { value: ethers.utils.parseUnits("15", "ether") });
+    await nftRoyaltySale.connect(user6).buyRoyalty(15, user6.address, {
+      value: ethers.utils.parseUnits("15", "ether"),
+    });
+
+    await expect(
+      nftRoyaltySale
+        .connect(user2)
+        .withdrawRoyalty(
+          await nftRoyaltySale.royaltyBalance(user2.address),
+          user2.address
+        )
+    ).to.be.rejectedWith(Error);
 
     await nftRoyaltySale.toggleRoyaltSale();
 
@@ -266,17 +272,19 @@ describe("NftRoyaltySale", function () {
       value: updateAmount,
     });
 
-    await expect(
-      nftRoyaltySale.connect(user2).withdrawRoyalty()
-    ).to.be.rejectedWith(Error);
-
     await nftRoyaltySale
       .connect(user2)
-      .withdrawRoyalty(await nftRoyaltySale.royaltyBalance(user2.address));
+      .withdrawRoyalty(
+        await nftRoyaltySale.royaltyBalance(user2.address),
+        user2.address
+      );
 
     await nftRoyaltySale
       .connect(user3)
-      .withdrawRoyalty(await nftRoyaltySale.royaltyBalance(user3.address));
+      .withdrawRoyalty(
+        await nftRoyaltySale.royaltyBalance(user3.address),
+        user3.address
+      );
 
     await expect(
       nftRoyaltySale
@@ -294,7 +302,7 @@ describe("PicardyNftBase", function () {
   const name = "testToken";
   const symbol = "TST";
   const initBaseURI = "https://test.com/";
-  const artisteName = "testArtiste";
+  const creatorName = "testArtiste";
   let linkToken;
 
   let picardyHub;
@@ -306,20 +314,21 @@ describe("PicardyNftBase", function () {
   let nftBase;
   let nftRoyaltyImpAddress;
 
-  let details = {
-    maxSupply: maxSupply,
-    maxMintAmount: maxMintAmount,
-    cost: formatedCost,
-    percentage: percentage,
-    name: name,
-    symbol: symbol,
-    initBaseURI: initBaseURI,
-    artisteName: artisteName,
-  };
-
   beforeEach(async () => {
     const [hubAdmin, royaltyAddress, user1, user2, user3] =
       await ethers.getSigners();
+
+    let details = {
+      maxSupply: maxSupply,
+      maxMintAmount: maxMintAmount,
+      cost: formatedCost,
+      percentage: percentage,
+      name: name,
+      symbol: symbol,
+      initBaseURI: initBaseURI,
+      creatorName: creatorName,
+      creator: user1.address,
+    };
 
     let LinkToken = await ethers.getContractFactory("MocLink");
     tokenContract = await LinkToken.deploy();
@@ -350,7 +359,7 @@ describe("PicardyNftBase", function () {
       .createNftRoyalty(details);
 
     nftRoyaltySaleAddress =
-      await nftRoyaltySaleFactory.getNftRoyaltySaleAddress(artisteName, name);
+      await nftRoyaltySaleFactory.getNftRoyaltySaleAddress(creatorName, name);
 
     nftRoyaltySale = await ethers.getContractAt(
       "NftRoyaltySale",

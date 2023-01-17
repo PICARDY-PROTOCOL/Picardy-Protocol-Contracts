@@ -50,7 +50,7 @@ contract TokenRoyaltySaleFactory is Context, ReentrancyGuard {
     ///@dev Creats A ERC20 token royalty sale contract 
     ///@param _askAmount The total askinng amount for royalty
     ///@param _returnPercentage Percentage of royalty to sell
-    function createTokenRoyalty(uint _askAmount, uint _returnPercentage, string memory creatorName, string memory name) external nonReentrant returns(address){
+    function createTokenRoyalty(uint _askAmount, uint _returnPercentage, string memory creatorName, string memory name, address creator) external nonReentrant returns(address){
         uint newTokenRoyaltyId = tokenRoyaltyId;
         bytes32 salt = keccak256(abi.encodePacked(newTokenRoyaltyId, block.number, block.timestamp));
         address payable tokenRoyalty = payable(Clones.cloneDeterministic(tokenRoyaltySaleImplementation, salt));
@@ -58,7 +58,7 @@ contract TokenRoyaltySaleFactory is Context, ReentrancyGuard {
         royaltySaleAddress[creatorName][name] = tokenRoyalty;
         tokenRoyaltyDetailsMap[tokenRoyalty] = n_tokenRoyaltyDetails;
         tokenRoyaltyId++;
-        TokenRoyaltySale(tokenRoyalty).initilize(_askAmount, _returnPercentage, address(this), _msgSender(), creatorName, name);
+        TokenRoyaltySale(tokenRoyalty).initilize(_askAmount, _returnPercentage, address(this), creator, creatorName, name, _msgSender());
         emit TokenRoyaltyCreated(_msgSender(), tokenRoyalty, newTokenRoyaltyId);
         return(tokenRoyalty);
     }

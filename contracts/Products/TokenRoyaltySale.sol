@@ -18,6 +18,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
     event UpkeepPerformed(uint indexed time);
     event AutomationStarted(bool indexed status);
     event RoyaltyWithdrawn(uint indexed amount, address indexed holder);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     enum TokenRoyaltyState{
         OPEN,
@@ -62,7 +63,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         _;
     }
 
-    function initilize(uint _royaltyPoolSize, uint _percentage, address _tokenRoyaltyFactory, address _creator, string memory _creatorsName, string memory _name) external {
+    function initilize(uint _royaltyPoolSize, uint _percentage, address _tokenRoyaltyFactory, address _creator, string memory _creatorsName, string memory _name, address _owner) external {
         require(!initilized, "token Royalty: already initilized ");
         royalty.royaltyPoolSize = _royaltyPoolSize;
         royalty.percentage = _percentage;
@@ -70,7 +71,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         royalty.creator = _creator;
         royalty.creatorsName = _creatorsName;
         royalty.name = _name;
-        owner = _creator;
+        owner = _owner;
         tokenRoyaltyState = TokenRoyaltyState.CLOSED;
         initilized = true;
         _CPToken();
@@ -229,6 +230,12 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         royaltyAdapter = _adapter;
     }
 
+    function transferOwnership(address newOwner) public onlyOwner {
+        require(newOwner != address(0), "new owner is the zero address");
+        owner = newOwner;
+        emit OwnershipTransferred(owner, newOwner);
+    }
+
     function getPoolMembers() external view returns (address[] memory){
         return royalty.royaltyPoolMembers;
     }
@@ -257,6 +264,10 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
 
     function getCreator() external view returns (address){
         return royalty.creator;
+    }
+
+    function getOwner() external view returns(address){
+        return owner;
     }
 
     function getRoyaltyPercentage() external view returns(uint){
@@ -344,6 +355,8 @@ interface IPicardyTokenRoyaltySale {
     function updateRoyalty(uint amount, address tokenAddress) external;
 
     function getCreator() external view returns (address);
+
+    function getOwner() external view returns(address);
 
     /// @notice withdraws the royalty contract balance
     function withdraw() external;

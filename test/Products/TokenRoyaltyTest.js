@@ -48,7 +48,13 @@ describe("TokenRoyaltyTest", function () {
 
     await tokenRoyaltyFactory
       .connect(user1)
-      .createTokenRoyalty(askAmount, returnPercentage, creatorsName, name);
+      .createTokenRoyalty(
+        askAmount,
+        returnPercentage,
+        creatorsName,
+        name,
+        user1.address
+      );
 
     const tokenAddress = await tokenRoyaltyFactory
       .connect(user1)
@@ -84,14 +90,14 @@ describe("TokenRoyaltyTest", function () {
       await ethers.getSigners();
 
     await expect(
-      tokenRoyaltySale.connect(user2).buyRoyalty({
+      tokenRoyaltySale.connect(user2).buyRoyalty(user2.address, {
         value: amount,
       })
     ).to.be.rejectedWith(Error);
 
     await tokenRoyaltySale.start();
 
-    await tokenRoyaltySale.connect(user2).buyRoyalty({
+    await tokenRoyaltySale.connect(user2).buyRoyalty(user2.address, {
       value: amount,
     });
   });
@@ -105,11 +111,11 @@ describe("TokenRoyaltyTest", function () {
 
     await tokenRoyaltySale.start();
 
-    await tokenRoyaltySale.connect(user2).buyRoyalty({
+    await tokenRoyaltySale.connect(user2).buyRoyalty(user2.address, {
       value: amount1,
     });
 
-    await tokenRoyaltySale.connect(user3).buyRoyalty({
+    await tokenRoyaltySale.connect(user3).buyRoyalty(user3.address, {
       value: amount2,
     });
 
@@ -148,11 +154,11 @@ describe("TokenRoyaltyTest", function () {
     const trx = await tokenRoyaltySale.start();
     await trx.wait();
 
-    await tokenRoyaltySale.connect(user2).buyRoyalty({
+    await tokenRoyaltySale.connect(user2).buyRoyalty(user2.address, {
       value: amount1,
     });
 
-    await tokenRoyaltySale.connect(user3).buyRoyalty({
+    await tokenRoyaltySale.connect(user3).buyRoyalty(user3.address, {
       value: amount2,
     });
 
@@ -183,11 +189,17 @@ describe("TokenRoyaltyTest", function () {
       .connect(provider)
       .getMemberPoolSize(user3.address);
 
-    await tokenRoyaltySale.connect(user2).withdrawRoyalty(user2RoyaltyBal);
-    await tokenRoyaltySale.connect(user3).withdrawRoyalty(user3RoyaltyBal);
+    await tokenRoyaltySale
+      .connect(user2)
+      .withdrawRoyalty(user2RoyaltyBal, user2.address);
+    await tokenRoyaltySale
+      .connect(user3)
+      .withdrawRoyalty(user3RoyaltyBal, user2.address);
 
     await expect(
-      tokenRoyaltySale.connect(user4).withdrawRoyalty(user2RoyaltyBal)
+      tokenRoyaltySale
+        .connect(user4)
+        .withdrawRoyalty(user2RoyaltyBal, user4.address)
     ).to.be.rejectedWith(Error);
 
     // console.log(

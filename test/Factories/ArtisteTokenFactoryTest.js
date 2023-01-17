@@ -3,7 +3,7 @@ const chai = require("chai");
 const { ethers } = require("hardhat");
 chai.use(require("chai-as-promised"));
 
-describe("ArtisteTokenFactory", async function () {
+describe("ArtisteTokenFactory", function () {
   const totalAmount = 1e7;
   const name = "testToken";
   const symbol = "TT";

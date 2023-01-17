@@ -44,7 +44,13 @@ describe("TokenRoyaltySaleFactory", function () {
     const [hubAdmin, user, royaltyAddress] = await ethers.getSigners();
     const tx = await tokenRoyaltySaleFactory
       .connect(user)
-      .createTokenRoyalty(askAmount, returnPercentage, creatorsName, name);
+      .createTokenRoyalty(
+        askAmount,
+        returnPercentage,
+        creatorsName,
+        name,
+        user.address
+      );
 
     const tokenRoyaltyAddress =
       await tokenRoyaltySaleFactory.getTokenRoyaltyAddress(creatorsName, name);

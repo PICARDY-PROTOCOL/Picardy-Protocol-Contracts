@@ -3,7 +3,7 @@ const chai = require("chai");
 const { ethers } = require("hardhat");
 chai.use(require("chai-as-promised"));
 
-describe("RoyaltyAdapterFactory", async function () {
+describe("RoyaltyAdapterFactory", function () {
   let picardyHub;
   let royaltyAdapterFactory;
   let nftRoyaltyAdapterImp;
@@ -16,22 +16,11 @@ describe("RoyaltyAdapterFactory", async function () {
   const name = "testToken";
   const symbol = "TST";
   const initBaseURI = "https://test.com/";
-  const artisteName = "testArtiste";
+  const creatorName = "testArtiste";
 
   const askAmount = ethers.utils.parseUnits("100", "ether");
   const returnPercentage = 20;
   const creatorsName = "testCreator";
-
-  let details = {
-    maxSupply: maxSupply,
-    maxMintAmount: maxMintAmount,
-    cost: formatedCost,
-    percentage: percentage,
-    name: name,
-    symbol: symbol,
-    initBaseURI: initBaseURI,
-    artisteName: artisteName,
-  };
 
   let linkToken;
   let jobId = "42b90f5bf8b940029fed6330f7036f01";
@@ -47,6 +36,18 @@ describe("RoyaltyAdapterFactory", async function () {
   beforeEach(async () => {
     const [hubAdmin, royaltyAddress, user1, user2, user3] =
       await ethers.getSigners();
+
+    let details = {
+      maxSupply: maxSupply,
+      maxMintAmount: maxMintAmount,
+      cost: formatedCost,
+      percentage: percentage,
+      name: name,
+      symbol: symbol,
+      initBaseURI: initBaseURI,
+      creatorName: creatorName,
+      creator: user1.address,
+    };
 
     const LinkToken = await ethers.getContractFactory("MocLink");
     tokenContract = await LinkToken.deploy();
@@ -99,11 +100,17 @@ describe("RoyaltyAdapterFactory", async function () {
       .createNftRoyalty(details);
 
     nftRoyaltySaleAddress =
-      await nftRoyaltySaleFactory.getNftRoyaltySaleAddress(artisteName, name);
+      await nftRoyaltySaleFactory.getNftRoyaltySaleAddress(creatorName, name);
 
     const tx2 = await tokenRoyaltyFactory
       .connect(user1)
-      .createTokenRoyalty(askAmount, returnPercentage, creatorsName, name);
+      .createTokenRoyalty(
+        askAmount,
+        returnPercentage,
+        creatorsName,
+        name,
+        user1.address
+      );
 
     tokenRoyaltySaleAddress = await tokenRoyaltyFactory
       .connect(user1)

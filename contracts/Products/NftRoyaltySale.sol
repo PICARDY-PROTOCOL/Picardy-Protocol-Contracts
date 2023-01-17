@@ -21,6 +21,7 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
     event RoyaltyUpdated(uint indexed royalty);
     event WithdrawSuccess(uint indexed time);
     event RoyaltyWithdrawn(uint indexed amount, address indexed holder);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     
     enum NftRoyaltyState {
         OPEN,
@@ -44,7 +45,7 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
 
     Royalty royalty;
     
-    address public owner;
+    address owner;
     address public nftRoyaltyAddress;
     address private royaltyAdapter;
     address private picardyReg;
@@ -76,11 +77,12 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         string memory _initBaseURI, 
         string memory _creatorName,
         address _creator,
-        address _factroyAddress) public {
+        address _factroyAddress, 
+        address _owner) public {
             require(!initialized, "already initialized");
             Royalty memory newRoyalty = Royalty(_maxMintAmount, _maxSupply, _cost, _percentage, _creatorName, _name, _initBaseURI, _symbol, _creator, _factroyAddress);
             royalty = newRoyalty;
-            owner = _creator;
+            owner = _owner;
             nftRoyaltyState = NftRoyaltyState.CLOSED;
             initialized = true;
         }
@@ -104,7 +106,7 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
     }
 
     function toggleAutomation() external {
-        require(msg.sender == IRoyaltyAdapter(royaltyAdapter).getPicardyReg() || msg.sender == owner, "toggleAutomation: Un Auth");
+        require(msg.sender == IRoyaltyAdapter(royaltyAdapter).getPicardyReg() ||msg.sender == owner, "toggleAutomation: Un Auth");
         automationStarted = !automationStarted;
         emit AutomationStarted(false);
     }
@@ -144,7 +146,7 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         require(msg.value >= cost * _mintAmount, "Insufficient funds!");
         nftBalance[_holder] += _mintAmount;
         PicardyNftBase(nftRoyaltyAddress).buyRoyalty(_mintAmount, _holder);
-        emit RoyaltySold(_mintAmount, _holder);
+        emit RoyaltySold(_mintAmount, _holder); 
     }
     /**
         @dev This function can only be called by the royaltySale owner or payMaster contract to pay royalty in ERC20.    
@@ -194,21 +196,6 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         uint nextUpdate = lastRoyaltyUpdate + updateInterval;
         uint timeLeft = nextUpdate - timePassed;
         return timeLeft;
-    }
-
-    function getTokenDetails() external view returns(uint, uint, uint, string memory, string memory, string memory){  
-        uint price = royalty.cost;
-        uint maxSupply= royalty.maxSupply;
-        uint percentage=royalty.percentage;
-        string memory symbol =royalty.symbol;
-        string memory name = royalty.name;
-        string memory creatorName = royalty.creatorName;
-
-        return (price, maxSupply, percentage, symbol, name, creatorName);
-    }
-
-    function getCreator() external view returns(address){
-        return royalty.creator;
     }
 
     function withdraw() external onlyOwner { 
@@ -265,12 +252,37 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         _unpause();
     }
 
+    function transferOwnership(address newOwner) public onlyOwner {
+        require(newOwner != address(0), "new owner is the zero address");
+        owner = newOwner;
+        emit OwnershipTransferred(owner, newOwner);
+    }
+
     //Getter FUNCTIONS//
 
     function getTokensId(address _addr) external returns (uint[] memory){
         uint[] memory tokenIds = _getTokenIds(_addr);
         
         return tokenIds;
+    }
+
+    function getTokenDetails() external view returns(uint, uint, uint, string memory, string memory, string memory){  
+        uint price = royalty.cost;
+        uint maxSupply= royalty.maxSupply;
+        uint percentage=royalty.percentage;
+        string memory symbol =royalty.symbol;
+        string memory name = royalty.name;
+        string memory creatorName = royalty.creatorName;
+
+        return (price, maxSupply, percentage, symbol, name, creatorName);
+    }
+
+    function getCreator() external view returns(address){
+        return royalty.creator;
+    }
+
+    function getOwner() external view returns(address){
+        return owner;
     }
 
     // INTERNAL FUNCTIONS//
@@ -335,7 +347,8 @@ interface IPicardyNftRoyaltySale {
     function setupAutomation(uint256 _updateInterval, address _royaltyAdapter) external;
 
     function toggleAutomation() external;
-    
+
+    function getOwner() external view returns(address);
     /// @dev pause the royalty sale contract
     function pause() external ;
     

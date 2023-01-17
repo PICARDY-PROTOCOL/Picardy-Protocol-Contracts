@@ -11,7 +11,7 @@ describe("NftRoyaltySaleFactory", function () {
   const name = "testToken";
   const symbol = "TST";
   const initBaseURI = "https://test.com/";
-  const artisteName = "testArtiste";
+  const creatorName = "testArtiste";
   //const linkToken = "0x326C977E6efc84E512bB9C30f76E30c160eD06FB";
 
   let picardyHub;
@@ -20,18 +20,9 @@ describe("NftRoyaltySaleFactory", function () {
   let tokenContract;
   let nftRoyaltyImpAddress;
 
-  let details = {
-    maxSupply: maxSupply,
-    maxMintAmount: maxMintAmount,
-    cost: cost,
-    percentage: percentage,
-    name: name,
-    symbol: symbol,
-    initBaseURI: initBaseURI,
-    artisteName: artisteName,
-  };
-
   beforeEach(async () => {
+    const [hubAdmin, user, royaltyAddress] = await ethers.getSigners();
+
     const LinkToken = await ethers.getContractFactory("MocLink");
     tokenContract = await LinkToken.deploy();
     linkToken = tokenContract.address;
@@ -59,13 +50,26 @@ describe("NftRoyaltySaleFactory", function () {
 
   it("user can create nft royalty sale", async () => {
     const [hubAdmin, user, royaltyAddress] = await ethers.getSigners();
+
+    let details = {
+      maxSupply: maxSupply,
+      maxMintAmount: maxMintAmount,
+      cost: cost,
+      percentage: percentage,
+      name: name,
+      symbol: symbol,
+      initBaseURI: initBaseURI,
+      creatorName: creatorName,
+      creator: user.address,
+    };
+
     let eventIndex;
     const tx = await nftRoyaltySaleFactory
       .connect(user)
       .createNftRoyalty(details);
     const nftRoyaltySaleAddress = await nftRoyaltySaleFactory
       .connect(user)
-      .getNftRoyaltySaleAddress(artisteName, name);
+      .getNftRoyaltySaleAddress(creatorName, name);
 
     const receipt = await tx.wait();
 

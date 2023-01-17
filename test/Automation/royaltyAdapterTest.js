@@ -3,7 +3,7 @@ const chai = require("chai");
 const { ethers } = require("hardhat");
 chai.use(require("chai-as-promised"));
 
-describe("nftRoyaltyAdapter", async function () {
+describe("nftRoyaltyAdapter", function () {
   let picardyHub;
   let royaltyAdapterFactory;
   let nftRoyaltyAdapterImp;
@@ -16,18 +16,7 @@ describe("nftRoyaltyAdapter", async function () {
   const name = "testToken";
   const symbol = "TST";
   const initBaseURI = "https://test.com/";
-  const artisteName = "testArtiste";
-
-  let details = {
-    maxSupply: maxSupply,
-    maxMintAmount: maxMintAmount,
-    cost: formatedCost,
-    percentage: percentage,
-    name: name,
-    symbol: symbol,
-    initBaseURI: initBaseURI,
-    artisteName: artisteName,
-  };
+  const creatorName = "creator";
 
   let linkToken;
   let jobId = "42b90f5bf8b940029fed6330f7036f01";
@@ -41,6 +30,18 @@ describe("nftRoyaltyAdapter", async function () {
   beforeEach(async () => {
     const [hubAdmin, royaltyAddress, user1, user2, user3] =
       await ethers.getSigners();
+
+    let details = {
+      maxSupply: maxSupply,
+      maxMintAmount: maxMintAmount,
+      cost: formatedCost,
+      percentage: percentage,
+      name: name,
+      symbol: symbol,
+      initBaseURI: initBaseURI,
+      creatorName: creatorName,
+      creator: user1.address,
+    };
 
     let ticker = "ETH";
 
@@ -77,7 +78,7 @@ describe("nftRoyaltyAdapter", async function () {
       .createNftRoyalty(details);
 
     nftRoyaltySaleAddress =
-      await nftRoyaltySaleFactory.getNftRoyaltySaleAddress(artisteName, name);
+      await nftRoyaltySaleFactory.getNftRoyaltySaleAddress(creatorName, name);
 
     const NftRoyaltyAdapterImp = await hre.ethers.getContractFactory(
       "RoyaltyAdapter"
@@ -174,7 +175,7 @@ describe("nftRoyaltyAdapter", async function () {
   });
 }); // end describe
 
-describe("TokenRoyaltyAdapter", async function () {
+describe("TokenRoyaltyAdapter", function () {
   let picardyHub;
   let royaltyAdapterFactory;
   let tokenRoyaltyAdapterImp;
@@ -230,7 +231,13 @@ describe("TokenRoyaltyAdapter", async function () {
 
     const tx2 = await tokenRoyaltyFactory
       .connect(user1)
-      .createTokenRoyalty(askAmount, returnPercentage, creatorsName, name);
+      .createTokenRoyalty(
+        askAmount,
+        returnPercentage,
+        creatorsName,
+        name,
+        user1.address
+      );
 
     tokenRoyaltySaleAddress = await tokenRoyaltyFactory
       .connect(user1)
