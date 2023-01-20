@@ -2,6 +2,7 @@ const chai = require("chai");
 const { assert, expect } = require("chai");
 const { ethers } = require("hardhat");
 const { waffle } = require("hardhat");
+//const erc721Abi = require("./utils/ERC721abi.json");
 const provider = waffle.provider;
 chai.use(require("chai-as-promised"));
 
@@ -27,6 +28,8 @@ describe("TokenRoyaltyTest", function () {
 
     const PicardyHub = await ethers.getContractFactory("PicardyHub");
     picardyHub = await PicardyHub.deploy();
+
+    const CPToken = await ethers.getContractFactory("CPToken");
 
     const TokenRoyaltySaleFactory = await ethers.getContractFactory(
       "TokenRoyaltySaleFactory"
@@ -148,7 +151,8 @@ describe("TokenRoyaltyTest", function () {
   it("holders can withdraw royalty balance", async () => {
     const amount1 = ethers.utils.parseUnits("40", "ether");
     const amount2 = ethers.utils.parseUnits("40", "ether");
-    const [hubAdmin, royaltyAddress, user1, user2, user3, user4] =
+    const amountToSend = ethers.utils.parseUnits("10", "ether");
+    const [hubAdmin, royaltyAddress, user1, user2, user3, user4, user5] =
       await ethers.getSigners();
 
     const trx = await tokenRoyaltySale.start();
@@ -161,6 +165,14 @@ describe("TokenRoyaltyTest", function () {
     await tokenRoyaltySale.connect(user3).buyRoyalty(user3.address, {
       value: amount2,
     });
+
+    const token = await ethers.getContractAt(
+      "CPToken",
+      await tokenRoyaltySale.getRoyatyTokenAddress(),
+      user1
+    );
+
+    await token.connect(user2).transfer(user5.address, amountToSend);
 
     await tokenRoyaltySale.changeRoyaltyState();
 
@@ -181,6 +193,10 @@ describe("TokenRoyaltyTest", function () {
       .connect(provider)
       .getRoyaltyBalance(user3.address);
 
+    const sentUserRoyaltyBalance = await tokenRoyaltySale
+      .connect(provider)
+      .getRoyaltyBalance(user5.address);
+
     const user2PoolSize = await tokenRoyaltySale
       .connect(provider)
       .getMemberPoolSize(user2.address);
@@ -194,25 +210,16 @@ describe("TokenRoyaltyTest", function () {
       .withdrawRoyalty(user2RoyaltyBal, user2.address);
     await tokenRoyaltySale
       .connect(user3)
-      .withdrawRoyalty(user3RoyaltyBal, user2.address);
+      .withdrawRoyalty(user3RoyaltyBal, user3.address);
+
+    await tokenRoyaltySale
+      .connect(user5)
+      .withdrawRoyalty(sentUserRoyaltyBalance, user5.address);
 
     await expect(
       tokenRoyaltySale
         .connect(user4)
         .withdrawRoyalty(user2RoyaltyBal, user4.address)
     ).to.be.rejectedWith(Error);
-
-    // console.log(
-    //   "Royalty Balance",
-    //   user2RoyaltyBal.toString(),
-    //   user3RoyaltyBal.toString()
-    // );
-    // console.log("pool size:", user2PoolSize, ":", user3PoolSize);
-
-    // console.log(
-    //   await tokenRoyaltySale.connect(provider).getRoyaltyPercentage()
-    // );
-
-    // console.log("balanceAfterDeposi:", balanceAfterDeposi.toString());
   });
 });

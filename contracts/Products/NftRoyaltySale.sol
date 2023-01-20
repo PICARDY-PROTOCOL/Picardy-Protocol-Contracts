@@ -85,14 +85,13 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
             owner = _owner;
             nftRoyaltyState = NftRoyaltyState.CLOSED;
             initialized = true;
-        }
+    }
 
     function start() external onlyOwner {
         require(nftRoyaltyState == NftRoyaltyState.CLOSED);
         _picardyNft();
         nftRoyaltyState = NftRoyaltyState.OPEN;
     }
-
 
     //This function is called by picardy royalty registrar, PS: royalty adapter contract needs LINK for automation to work
     function setupAutomation(uint256 _updateInterval, address _royaltyAdapter) external {
@@ -101,6 +100,7 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         require(nftRoyaltyState == NftRoyaltyState.OPEN, "royalty sale closed");
         updateInterval = _updateInterval * time;
         royaltyAdapter = _royaltyAdapter;
+        lastRoyaltyUpdate = block.timestamp;
         automationStarted = true;
         emit AutomationStarted(true);
     }
@@ -148,6 +148,7 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         PicardyNftBase(nftRoyaltyAddress).buyRoyalty(_mintAmount, _holder);
         emit RoyaltySold(_mintAmount, _holder); 
     }
+
     /**
         @dev This function can only be called by the royaltySale owner or payMaster contract to pay royalty in ERC20.    
     */
@@ -224,19 +225,17 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
         emit RoyaltyWithdrawn(_amount, _holder);
     }
 
-    function withdrawRoyaltyERC(uint _amount, address _holder) external nonReentrant {
-        require (automationStarted == true, "automation not started");
-        require(nftRoyaltyState == NftRoyaltyState.CLOSED, "royalty sale still open");
-        address tokenAddress = IRoyaltyAdapter(royaltyAdapter).getTickerAddress();
-        require(IERC20(tokenAddress).balanceOf(address(this)) >= _amount, "low balance");
-        require(royaltyBalance[_holder] >= _amount, "Insufficient balance");
-        royaltyBalance[_holder] -= _amount;
-        (bool os) = IERC20(tokenAddress).transfer(_holder, _amount);
+    function withdrawRoyaltyERC(uint _amount, address _holder, address _tokenAddress) external nonReentrant {
+        require(nftRoyaltyState == NftRoyaltyState.CLOSED, "royalty sale still open"); 
+        require(IERC20(_tokenAddress).balanceOf(address(this)) >= _amount, "low balance");
+        require(ercRoyaltyBalance[_holder][_tokenAddress] >= _amount, "Insufficient royalty balance");
+        ercRoyaltyBalance[_holder][_tokenAddress] -= _amount;
+        (bool os) = IERC20(_tokenAddress).transfer(_holder, _amount);
         require(os);
         emit RoyaltyWithdrawn(_amount, _holder);
     }
     
-    function changeUpdateInterval(uint _updateInterval) external {
+    function changeUpdateInterval(uint _updateInterval) external onlyOwner {
       updateInterval = _updateInterval * time;  
     }
 
@@ -279,6 +278,10 @@ contract NftRoyaltySale is ReentrancyGuard, Pausable, AutomationCompatibleInterf
 
     function getCreator() external view returns(address){
         return royalty.creator;
+    }
+
+    function getRoyaltyTokenAddress() external view returns(address){
+        return nftRoyaltyAddress;
     }
 
     function getOwner() external view returns(address){

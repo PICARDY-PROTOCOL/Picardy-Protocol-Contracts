@@ -107,8 +107,8 @@ contract NftRoyaltySaleFactory is Context , ReentrancyGuard {
         return picardyHub;
     }
 
-    function getNftRoyaltySaleAddress(string memory _artisteName, string memory _name) external view returns (address){
-        return royaltySaleAddress[_artisteName][_name];
+    function getNftRoyaltySaleAddress(string memory _creatorName, string memory _name) external view returns (address){
+        return royaltySaleAddress[_creatorName][_name];
     }
 }
 

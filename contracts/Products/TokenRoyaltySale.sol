@@ -74,8 +74,6 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         owner = _owner;
         tokenRoyaltyState = TokenRoyaltyState.CLOSED;
         initilized = true;
-        _CPToken();
-        
     }
 
     function start() external onlyOwner {
@@ -157,12 +155,12 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
     function updateRoyalty(uint amount, address tokenAddress) external {
         require(tokenRoyaltyState == TokenRoyaltyState.CLOSED, "royalty sale still open");
         require (msg.sender == getUpdateRoyaltyCaller(), "updateRoyalty: Un-auth");
-        for(uint i = 0; i < royalty.royaltyPoolMembers.length; i++){
-            address poolMember = royalty.royaltyPoolMembers[i];
+        address[] memory holders = CPToken(royalty.royaltyCPToken).getHolders();
+        for(uint i = 0; i < holders.length; i++){
+            address poolMember = holders[i];
             uint balance = IERC20(royalty.royaltyCPToken).balanceOf(poolMember);
             uint poolSize = (balance * 10000) / royalty.royaltyPoolBalance;
             uint _amount = (poolSize * amount) / 10000;
-
             ercRoyaltyBalance[poolMember][tokenAddress] += _amount;
         }
         lastRoyaltyUpdate = block.timestamp;
@@ -196,23 +194,20 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
 
     function withdrawRoyalty(uint _amount, address _holder) external nonReentrant {
         require(tokenRoyaltyState == TokenRoyaltyState.CLOSED, "royalty sale still open");
-        require(isPoolMember[_holder] == true, "not royalty member");
-        require(royaltyBalance[_holder] != 0, "royalty balance empty");
-        require(royaltyBalance[_holder] >= _amount);
+        require(address(this).balance >= _amount, "low balance");
+        require(royaltyBalance[_holder] >= _amount, "Insufficient royalty balance");
         royaltyBalance[_holder] - _amount;
         (bool os, ) = payable(_holder).call{value: _amount}("");
         emit RoyaltyWithdrawn(_amount, _holder);
         require(os);
     }
 
-    function withdrawRoyaltyERC(uint _amount, address _holder) external nonReentrant {
-        require (automationStarted == true, "automation not started");
+    function withdrawRoyaltyERC(uint _amount, address _holder, address _tokenAddress) external nonReentrant {
         require(tokenRoyaltyState == TokenRoyaltyState.CLOSED, "royalty still open");
-        address tokenAddress = ITokenRoyaltyAdapter(royaltyAdapter).getTickerAddress();
-        require(IERC20(tokenAddress).balanceOf(address(this)) >= _amount, "low balance");
-        require(royaltyBalance[_holder] >= _amount, "Insufficient balance");
-        royaltyBalance[_holder] -= _amount;
-        (bool os) = IERC20(tokenAddress).transfer(_holder, _amount);
+        require(IERC20(_tokenAddress).balanceOf(address(this)) >= _amount, "low balance");
+        require(ercRoyaltyBalance[_holder][_tokenAddress] >= _amount, "Insufficient royalty balance");
+        ercRoyaltyBalance[_holder][_tokenAddress] -= _amount;
+        (bool os) = IERC20(_tokenAddress).transfer(_holder, _amount);
         require(os);
         emit RoyaltyWithdrawn(_amount, _holder);  
     }
@@ -258,6 +253,10 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         return poolSize;
     }
 
+    function getRoyatyTokenAddress() external view returns(address){
+        return royalty.royaltyCPToken;
+    }
+
     function getRoyaltyBalance(address addr) external view returns(uint){
         return royaltyBalance[addr];
     }
@@ -289,29 +288,29 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         return timeLeft;
     } 
 
+    function _start() internal {
+        tokenRoyaltyState = TokenRoyaltyState.OPEN;
+         _CPToken();
+    }
 
     function _CPToken() internal {
         CPToken newCpToken = new CPToken("Picardy Royalty Token", address(this));
         royalty.royaltyCPToken = address(newCpToken);
-        tokenRoyaltyState = TokenRoyaltyState.CLOSED;
         newCpToken.mint(royalty.royaltyPoolSize, address(this));
-    }
-
-    function _start() internal {
-        tokenRoyaltyState = TokenRoyaltyState.OPEN;
     }
 
     function _update(uint amount) internal {
         require(tokenRoyaltyState == TokenRoyaltyState.CLOSED, "royalty sale still open");
-        for(uint i = 0; i < royalty.royaltyPoolMembers.length; i++){
-            address poolMember = royalty.royaltyPoolMembers[i];
+        address[] memory holders = CPToken(royalty.royaltyCPToken).getHolders();
+        for(uint i = 0; i < holders.length; i++){
+            address poolMember = holders[i];
             uint balance = IERC20(royalty.royaltyCPToken).balanceOf(poolMember);
+            require(balance != 0, "balance is zero");
             uint poolSize = (balance * 10000) / royalty.royaltyPoolBalance;
             uint _amount = (poolSize * amount) / 10000;
             royaltyBalance[poolMember] += _amount;
         }
-        lastRoyaltyUpdate = block.timestamp;
-        
+        lastRoyaltyUpdate = block.timestamp;   
         emit RoyaltyBalanceUpdated(block.timestamp, msg.value);
     }
 

@@ -6,9 +6,14 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+
 
 contract PicardyNftBase is ERC721Enumerable, Pausable, Ownable {
   using Strings for uint256;
+  using Counters for Counters.Counter;
+
+  Counters.Counter private _tokenIds;
   
   struct Royalty {
   string baseURI;
@@ -59,16 +64,21 @@ contract PicardyNftBase is ERC721Enumerable, Pausable, Ownable {
   // Holders has to approve spend before buying the token
   function buyRoyalty(uint256 _mintAmount, address addr) external onlySaleContract{
     uint256 supply = totalSupply();
-    
+
+    if (_tokenIds.current() == 0) {
+      _tokenIds.increment();
+    }
+
     require(_mintAmount > 0);
     require(_mintAmount <= royalty.maxMintAmount);
     require(supply + _mintAmount <= royalty.maxSupply);
 
     royalty.holders.push(addr);
     royalty.saleCount += _mintAmount;
-
-    for (uint256 i = 1; i <= _mintAmount; i++) {
-      _safeMint(addr, supply + i);
+   
+    for (uint256 i = 0; i < _mintAmount; i++) {
+      _safeMint(addr, _tokenIds.current());
+      _tokenIds.increment();
     }
   }
 
@@ -128,8 +138,46 @@ contract PicardyNftBase is ERC721Enumerable, Pausable, Ownable {
     uint balance = address(this).balance;
     (bool os, ) = payable(_addr).call{value: balance}("");
     require(os);
-    
   }
+
+  function withdrawERC20(address _token, address _addr) public onlyOwner{
+    IERC20 token = IERC20(_token);
+    uint balance = token.balanceOf(address(this));
+    token.transfer(_addr, balance);
+  }
+
+  //override transferFrom
+  function transferFrom(
+    address from,
+    address to,
+    uint256 tokenId
+  ) public override {
+    royalty.holders.push(to);
+    super.transferFrom(from, to, tokenId); 
+  }
+
+  //override safeTransferFrom
+  function safeTransferFrom(
+    address from,
+    address to,
+    uint256 tokenId
+  ) public override {
+    super.safeTransferFrom(from, to, tokenId);
+    royalty.holders.push(to);
+  }
+
+  function _burn( uint256 tokenId) internal override {
+    require(_isApprovedOrOwner(_msgSender(), tokenId), "ERC721Burnable: caller is not owner nor approved");
+    for (uint i = 0; i < royalty.holders.length; i++) {
+      if (royalty.holders[i] == ownerOf(tokenId)) {
+        royalty.holders[i] = royalty.holders[royalty.holders.length - 1];
+        royalty.holders.pop();
+        break;
+      }
+    }
+    super._burn(tokenId);
+  }
+
 
   function getHolders() public view returns (address[] memory){
     return royalty.holders;

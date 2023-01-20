@@ -89,7 +89,6 @@ describe("NftRoyaltySale", function () {
 
     await nftRoyaltySale.start();
   });
-
   //it: only owner should setup automation
   it("only regstrar setup automation", async () => {
     const [
@@ -226,19 +225,33 @@ describe("NftRoyaltySale", function () {
 
   //it royaltyHolders can withdraw
   it("royaltyHolders can withdraw", async () => {
-    const [hubAdmin, royaltyAddress, user1, user2, user3, user4, user5, user6] =
-      await ethers.getSigners();
+    const [
+      hubAdmin,
+      royaltyAddress,
+      user1,
+      user2,
+      user3,
+      user4,
+      user5,
+      user6,
+      user7,
+    ] = await ethers.getSigners();
     const cost = 1;
     const mintAmount = 2;
     let total = cost * mintAmount;
     const updateAmount = ethers.utils.parseUnits("10", "ether");
     const formattedTotal = ethers.utils.parseUnits(total.toString(), "ether");
+    const token = await ethers.getContractAt(
+      "PicardyNftBase",
+      nftRoyaltySale.getRoyaltyTokenAddress()
+    );
 
     await nftRoyaltySale.start();
 
     await nftRoyaltySale.connect(user2).buyRoyalty(1, user2.address, {
       value: ethers.utils.parseUnits("1", "ether"),
     });
+
     await nftRoyaltySale
       .connect(user3)
       .buyRoyalty(2, user3.address, { value: formattedTotal });
@@ -254,6 +267,13 @@ describe("NftRoyaltySale", function () {
     await nftRoyaltySale.connect(user6).buyRoyalty(15, user6.address, {
       value: ethers.utils.parseUnits("15", "ether"),
     });
+
+    const tokenIds = await token
+      .connect(provider)
+      .holdersTokenIds(user2.address);
+    console.log(tokenIds.length);
+
+    await token.connect(user6).transferFrom(user6.address, user7.address, 12);
 
     await expect(
       nftRoyaltySale
@@ -283,6 +303,13 @@ describe("NftRoyaltySale", function () {
       .withdrawRoyalty(
         await nftRoyaltySale.royaltyBalance(user3.address),
         user3.address
+      );
+
+    await nftRoyaltySale
+      .connect(user7)
+      .withdrawRoyalty(
+        await nftRoyaltySale.royaltyBalance(user7.address),
+        user7.address
       );
 
     await expect(

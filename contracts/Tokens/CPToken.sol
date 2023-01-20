@@ -7,6 +7,7 @@ contract CPToken is ERC20 {
 
     uint decimal = 10**18;
     address public owner;
+    address[] holders;
 
     modifier onlyOwner {
         require(msg.sender == owner, "not approved");
@@ -20,5 +21,21 @@ contract CPToken is ERC20 {
     function mint(uint _amount, address _to) external onlyOwner {
         uint toMint = _amount * decimal;
         _mint(_to, toMint);
+    }
+
+    function transfer(address recipient, uint256 amount) public override returns (bool) {
+        super.transfer(recipient, amount);
+        holders.push(recipient);
+        return true;
+    }
+
+    function transferFrom(address sender, address recipient, uint256 amount) public  override returns (bool) {
+        super.transferFrom(sender, recipient, amount);
+        holders.push(recipient);
+        return true;
+    }
+
+    function getHolders() public view returns (address[] memory) {
+        return holders;
     }
 }
