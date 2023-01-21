@@ -15,6 +15,7 @@ describe("NftRoyaltySale", function () {
   const initBaseURI = "https://test.com/";
   const creatorName = "testArtiste";
   let linkToken;
+  let payoutToken;
 
   let picardyHub;
   let nftRoyaltySaleFactory;
@@ -49,6 +50,9 @@ describe("NftRoyaltySale", function () {
     const NftRoyaltySaleImpl = await hre.ethers.getContractFactory(
       "NftRoyaltySale"
     );
+
+    const PayoutToken = await ethers.getContractFactory("MocLink");
+    payoutToken = await PayoutToken.deploy();
 
     const nftRoyaltyImp = await NftRoyaltySaleImpl.deploy();
     await nftRoyaltyImp.deployed();
@@ -222,7 +226,6 @@ describe("NftRoyaltySale", function () {
     await nftRoyaltySale.toggleRoyaltSale();
     await nftRoyaltySale.withdraw();
   });
-
   //it royaltyHolders can withdraw
   it("royaltyHolders can withdraw", async () => {
     const [
@@ -268,11 +271,6 @@ describe("NftRoyaltySale", function () {
       value: ethers.utils.parseUnits("15", "ether"),
     });
 
-    const tokenIds = await token
-      .connect(provider)
-      .holdersTokenIds(user2.address);
-    console.log(tokenIds.length);
-
     await token.connect(user6).transferFrom(user6.address, user7.address, 12);
 
     await expect(
@@ -316,6 +314,112 @@ describe("NftRoyaltySale", function () {
       nftRoyaltySale
         .connect(user3)
         .withdrawRoyalty(ethers.utils.parseUnits("4", "ether"))
+    ).to.be.rejectedWith(Error);
+  });
+  //it: only royaltyholdersCan withdraw ERC20Royalty
+  it("only royaltyholdersCan withdraw ERC20Royalty", async () => {
+    const [
+      hubAdmin,
+      royaltyAddress,
+      user1,
+      user2,
+      user3,
+      user4,
+      user5,
+      user6,
+      user7,
+    ] = await ethers.getSigners();
+    const cost = 1;
+    const mintAmount = 2;
+    let total = cost * mintAmount;
+    const updateAmount = ethers.utils.parseUnits("10", "ether");
+    const formattedTotal = ethers.utils.parseUnits(total.toString(), "ether");
+
+    const token = await ethers.getContractAt(
+      "PicardyNftBase",
+      nftRoyaltySale.getRoyaltyTokenAddress()
+    );
+
+    await nftRoyaltySale.start();
+
+    await nftRoyaltySale.connect(user2).buyRoyalty(1, user2.address, {
+      value: ethers.utils.parseUnits("1", "ether"),
+    });
+
+    await nftRoyaltySale
+      .connect(user3)
+      .buyRoyalty(2, user3.address, { value: formattedTotal });
+
+    await nftRoyaltySale.connect(user5).buyRoyalty(4, user5.address, {
+      value: ethers.utils.parseUnits("4", "ether"),
+    });
+
+    await nftRoyaltySale.connect(user6).buyRoyalty(15, user6.address, {
+      value: ethers.utils.parseUnits("15", "ether"),
+    });
+
+    await token.connect(user6).transferFrom(user6.address, user7.address, 12);
+
+    await expect(
+      nftRoyaltySale
+        .connect(user2)
+        .withdrawRoyalty(
+          await nftRoyaltySale.royaltyBalance(user2.address),
+          user2.address
+        )
+    ).to.be.rejectedWith(Error);
+
+    await nftRoyaltySale.toggleRoyaltSale();
+    await payoutToken.connect(user2).mint(updateAmount, user2.address);
+    await nftRoyaltySale.updateRoyalty(updateAmount, payoutToken.address);
+
+    await payoutToken
+      .connect(user2)
+      .transfer(nftRoyaltySale.address, updateAmount);
+
+    const user2RoyaltyBal = await nftRoyaltySale
+      .connect(provider)
+      .getERC20RoyaltyBalance(user2.address, payoutToken.address);
+
+    const user3RoyaltyBal = await nftRoyaltySale
+      .connect(provider)
+      .getERC20RoyaltyBalance(user3.address, payoutToken.address);
+
+    const sentUserRoyaltyBalance = await nftRoyaltySale
+      .connect(provider)
+      .getERC20RoyaltyBalance(user5.address, payoutToken.address);
+
+    await nftRoyaltySale
+      .connect(user2)
+      .withdrawERC20Royalty(
+        user2RoyaltyBal,
+        user2.address,
+        payoutToken.address
+      );
+    await nftRoyaltySale
+      .connect(user3)
+      .withdrawERC20Royalty(
+        user3RoyaltyBal,
+        user3.address,
+        payoutToken.address
+      );
+
+    await nftRoyaltySale
+      .connect(user5)
+      .withdrawERC20Royalty(
+        sentUserRoyaltyBalance,
+        user5.address,
+        payoutToken.address
+      );
+
+    await expect(
+      nftRoyaltySale
+        .connect(user4)
+        .withdrawERC20Royalty(
+          user2RoyaltyBal,
+          user4.address,
+          payoutToken.address
+        )
     ).to.be.rejectedWith(Error);
   });
 });

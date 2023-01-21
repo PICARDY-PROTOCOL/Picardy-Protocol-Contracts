@@ -62,7 +62,6 @@ contract RoyaltyAdapter is ChainlinkClient {
         );
         req.add("creatorName", creatorName);
         req.add("name", name);
-        req.add("ticker", ticker);
         sendOperatorRequestTo(oracle, req, ORACLE_PAYMENT);
         
     }
@@ -74,7 +73,7 @@ contract RoyaltyAdapter is ChainlinkClient {
         recordChainlinkFulfillment(_requestId)
     {
         emit RoyaltyData(_requestId, amount);
-        IPayMaster(payMaster).sendPayment(address(this), ticker, amount);
+        IPayMaster(payMaster).sendPayment(address(this), ticker , amount);
        
     }
 

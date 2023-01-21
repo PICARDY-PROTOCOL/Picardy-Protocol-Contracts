@@ -213,8 +213,6 @@ contract RoyaltyAutomationRegistrar {
         emit AutomationCancled(royaltyAddress);
     }
 
-    // TODO: add a function to withdraw funds in cancled automation
-
     function updateAutomationConfig(address _link, address _registry, address _registrar) external {
         require(IPicardyHub(picardyHub).checkHubAdmin(msg.sender), "not hub admin");
         require(_link != address(0), "link address cannot be address 0");

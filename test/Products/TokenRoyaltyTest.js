@@ -2,7 +2,6 @@ const chai = require("chai");
 const { assert, expect } = require("chai");
 const { ethers } = require("hardhat");
 const { waffle } = require("hardhat");
-//const erc721Abi = require("./utils/ERC721abi.json");
 const provider = waffle.provider;
 chai.use(require("chai-as-promised"));
 
@@ -18,6 +17,7 @@ describe("TokenRoyaltyTest", function () {
   let tokenRoyaltySale;
   let linkToken;
   let tokenRoyaltyImpAddress;
+  let payoutToken;
 
   beforeEach(async () => {
     const [hubAdmin, royaltyAddress, user1, user2, user3] =
@@ -38,6 +38,9 @@ describe("TokenRoyaltyTest", function () {
     const TokenRoyaltySaleImpl = await hre.ethers.getContractFactory(
       "TokenRoyaltySale"
     );
+
+    const PayoutToken = await ethers.getContractFactory("MocLink");
+    payoutToken = await PayoutToken.deploy();
 
     const tokenRoyaltyImp = await TokenRoyaltySaleImpl.deploy();
     await tokenRoyaltyImp.deployed();
@@ -220,6 +223,88 @@ describe("TokenRoyaltyTest", function () {
       tokenRoyaltySale
         .connect(user4)
         .withdrawRoyalty(user2RoyaltyBal, user4.address)
+    ).to.be.rejectedWith(Error);
+  });
+
+  // it: only royalty owner can withdraw royaltyERC20; send token to royalty contract
+  it("only royalty owner can withdraw royaltyERC20", async () => {
+    const amount1 = ethers.utils.parseUnits("40", "ether");
+    const amount2 = ethers.utils.parseUnits("40", "ether");
+    const amountToSend = ethers.utils.parseUnits("10", "ether");
+    const [hubAdmin, royaltyAddress, user1, user2, user3, user4, user5] =
+      await ethers.getSigners();
+
+    const trx = await tokenRoyaltySale.start();
+    await trx.wait();
+
+    await tokenRoyaltySale.connect(user2).buyRoyalty(user2.address, {
+      value: amount1,
+    });
+
+    await tokenRoyaltySale.connect(user3).buyRoyalty(user3.address, {
+      value: amount2,
+    });
+
+    const token = await ethers.getContractAt(
+      "CPToken",
+      await tokenRoyaltySale.getRoyatyTokenAddress(),
+      user1
+    );
+
+    await token.connect(user2).transfer(user5.address, amountToSend);
+
+    await tokenRoyaltySale.changeRoyaltyState();
+
+    await payoutToken.connect(user2).mint(royaltyAmount, user2.address);
+    await tokenRoyaltySale.updateRoyalty(royaltyAmount, payoutToken.address);
+
+    await payoutToken
+      .connect(user2)
+      .transfer(tokenRoyaltySale.address, royaltyAmount);
+
+    const user2RoyaltyBal = await tokenRoyaltySale
+      .connect(provider)
+      .getERC20RoyaltyBalance(user2.address, payoutToken.address);
+
+    const user3RoyaltyBal = await tokenRoyaltySale
+      .connect(provider)
+      .getERC20RoyaltyBalance(user3.address, payoutToken.address);
+
+    const sentUserRoyaltyBalance = await tokenRoyaltySale
+      .connect(provider)
+      .getERC20RoyaltyBalance(user5.address, payoutToken.address);
+
+    await tokenRoyaltySale
+      .connect(user2)
+      .withdrawERC20Royalty(
+        user2RoyaltyBal,
+        user2.address,
+        payoutToken.address
+      );
+    await tokenRoyaltySale
+      .connect(user3)
+      .withdrawERC20Royalty(
+        user3RoyaltyBal,
+        user3.address,
+        payoutToken.address
+      );
+
+    await tokenRoyaltySale
+      .connect(user5)
+      .withdrawERC20Royalty(
+        sentUserRoyaltyBalance,
+        user5.address,
+        payoutToken.address
+      );
+
+    await expect(
+      tokenRoyaltySale
+        .connect(user4)
+        .withdrawERC20Royalty(
+          user2RoyaltyBal,
+          user4.address,
+          payoutToken.address
+        )
     ).to.be.rejectedWith(Error);
   });
 });

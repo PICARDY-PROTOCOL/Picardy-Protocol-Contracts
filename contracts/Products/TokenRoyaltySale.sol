@@ -167,13 +167,15 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         emit RoyaltyBalanceUpdated(block.timestamp, amount);
     }
 
-        function getUpdateRoyaltyCaller() private view returns (address) {
+    function getUpdateRoyaltyCaller() private view returns (address) {
         if (automationStarted == true){
             return ITokenRoyaltyAdapter(royaltyAdapter).getPayMaster();
         } else {
             return owner;
         }   
     }
+
+
 
     function withdraw() external onlyOwner {
         require(ownerWithdrawn == false, "funds already withdrawn");
@@ -202,7 +204,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         require(os);
     }
 
-    function withdrawRoyaltyERC(uint _amount, address _holder, address _tokenAddress) external nonReentrant {
+    function withdrawERC20Royalty(uint _amount, address _holder, address _tokenAddress) external nonReentrant {
         require(tokenRoyaltyState == TokenRoyaltyState.CLOSED, "royalty still open");
         require(IERC20(_tokenAddress).balanceOf(address(this)) >= _amount, "low balance");
         require(ercRoyaltyBalance[_holder][_tokenAddress] >= _amount, "Insufficient royalty balance");
@@ -217,7 +219,7 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         tokenRoyaltyState = TokenRoyaltyState.CLOSED;
     }
 
-    function changeUpdateInterval(uint _updateInterval) external {
+   function changeUpdateInterval(uint _updateInterval) external onlyOwner {
       updateInterval = _updateInterval * time;  
     }
 
@@ -261,6 +263,10 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         return royaltyBalance[addr];
     }
 
+    function getERC20RoyaltyBalance(address addr, address tokenAddress) external view returns(uint){
+        return ercRoyaltyBalance[addr][tokenAddress];
+    }
+
     function getCreator() external view returns (address){
         return royalty.creator;
     }
@@ -287,6 +293,10 @@ contract TokenRoyaltySale is AutomationCompatibleInterface, ReentrancyGuard, Pau
         uint timeLeft = nextUpdate - timePassed;
         return timeLeft;
     } 
+
+    function checkAutomation() external view returns (bool) {
+        return automationStarted;
+    }
 
     function _start() internal {
         tokenRoyaltyState = TokenRoyaltyState.OPEN;
@@ -363,7 +373,7 @@ interface IPicardyTokenRoyaltySale {
     /// @notice withdraws the royalty balance
     function withdrawRoyalty(uint _amount, address _holder) external;
 
-    function withdrawRoyalty2(uint _amount, address _holder) external;
+    function withdrawERC20Royalty(uint _amount, address _holder, address _tokenAddress) external;
 
     function setupAutomation(uint256 _updateInterval, address _royaltyAdapter) external;
 
