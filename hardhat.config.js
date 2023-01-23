@@ -5,6 +5,7 @@ require("@nomiclabs/hardhat-etherscan");
 //require("hardhat-contract-sizer");
 require("@nomiclabs/hardhat-waffle");
 require("hardhat-gas-reporter");
+require("solidity-docgen");
 //require("@openzeppelin/hardhat-upgrades");
 
 const dotenv = require("dotenv").config();
