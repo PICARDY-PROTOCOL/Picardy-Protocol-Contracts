@@ -143,7 +143,8 @@ contract PicardyNftBase is ERC721Enumerable, Pausable, Ownable {
   function withdrawERC20(address _token, address _addr) public onlyOwner{
     IERC20 token = IERC20(_token);
     uint balance = token.balanceOf(address(this));
-    token.transfer(_addr, balance);
+    (bool success) = token.transfer(_addr, balance);
+    require(success, "withdrawal failed");
   }
 
   //override transferFrom

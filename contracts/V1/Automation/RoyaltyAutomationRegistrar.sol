@@ -129,7 +129,6 @@ contract RoyaltyAutomationRegistrar {
                 details.royaltyType, 
                 details.ticker
             );
-
             royalty.setupAutomation(details.updateInterval, royaltyAdapter);
             i_payMaster.addRoyaltyData(
                 royaltyAdapter, 
@@ -207,9 +206,9 @@ contract RoyaltyAutomationRegistrar {
             IPicardyTokenRoyaltySale(royaltyAddress).toggleAutomation();
         }
         i_payMaster.removeRoyaltyData(i_registeredDetails.adapterAddress, royaltyAddress);
-        delete registeredDetails[royaltyAddress];
         hasReg[royaltyAddress] = false;
         i_registry.cancelUpkeep(i_registeredDetails.upkeepId);
+        delete registeredDetails[royaltyAddress];
         emit AutomationCancled(royaltyAddress);
     }
 
