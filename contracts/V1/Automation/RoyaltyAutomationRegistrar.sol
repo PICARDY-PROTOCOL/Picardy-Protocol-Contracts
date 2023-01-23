@@ -7,7 +7,7 @@ import {IPicardyNftRoyaltySale} from "../Products/NftRoyaltySale.sol";
 import {IPicardyTokenRoyaltySale} from "../Products/TokenRoyaltySale.sol";
 import {IPayMaster} from "../Automation/PayMaster.sol";
 import {IRoyaltyAdapterFactory} from "../Factory/RoyaltyAdapterFactory.sol";
-import {IPicardyHub} from "../PicardyHub.sol";
+import {IPicardyHub} from "../../PicardyHub.sol";
 
 interface KeeperRegistrarInterface {
     function register(

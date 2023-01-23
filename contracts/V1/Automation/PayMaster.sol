@@ -7,7 +7,7 @@ import {IRoyaltyAdapter} from "../Automation/RoyaltyAdapter.sol";
 import {ITokenRoyaltyAdapter} from "../Automation/TokenRoyaltyAdapter.sol";
 import {IPicardyNftRoyaltySale} from "../Products/NftRoyaltySale.sol";
 import {IPicardyTokenRoyaltySale} from "../Products/TokenRoyaltySale.sol";
-import {IPicardyHub} from "../PicardyHub.sol"; 
+import {IPicardyHub} from "../../PicardyHub.sol"; 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol"; 
 
 contract PayMaster {
