@@ -23,4 +23,5 @@ Deployed_address
 externalAdapter
 contracts/PicardyHub.sol
 packageTester
+contracts/V3
 

@@ -12,7 +12,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "../../Tokens/PicardyNftBase.sol";
 import {IRoyaltyAdapterV3} from "../AutomationV3/RoyaltyAdapterV3.sol";
-import {INftRoyaltySaleFactoryV2} from "../../V2/FactoryV2/NftRoyaltySaleFactoryV2.sol";
+import {INftRoyaltySaleFactoryV3} from "../FactoryV3/NftRoyaltySaleFactoryV3.sol";
 
 contract NftRoyaltySaleV3 is ReentrancyGuard, Pausable {
 
@@ -75,6 +75,7 @@ contract NftRoyaltySaleV3 is ReentrancyGuard, Pausable {
     bool automationStarted;
     bool initialized;
     bool ownerWithdrawn;
+    bool hasEnded;
     bool started;
     uint time = 1 minutes;
     uint royaltyType = 0;
@@ -129,7 +130,7 @@ contract NftRoyaltySaleV3 is ReentrancyGuard, Pausable {
     function setupAutomationV2(uint256 _updateInterval, address _royaltyAdapter, address _oracle, string memory _jobId) external {
         require(msg.sender == IRoyaltyAdapterV3(_royaltyAdapter).getPicardyReg() , "setupAutomation: only picardy reg");
         require(automationStarted == false, "startAutomation: automation started");
-        require(nftRoyaltyState == NftRoyaltyState.OPEN, "royalty sale closed");
+        require(nftRoyaltyState == NftRoyaltyState.CLOSED, "royalty sale still open");
         nodeDetails.oracle = _oracle;
         nodeDetails.jobId = _jobId;
         updateInterval = _updateInterval * time;
@@ -151,11 +152,20 @@ contract NftRoyaltySaleV3 is ReentrancyGuard, Pausable {
     /// @param _mintAmount amount of royalty token to be minted
     /// @param _holder address of the royalty token holder
     function buyRoyalty(uint _mintAmount, address _holder) external payable whenNotPaused nonReentrant{
+        require(!hasEnded, "already ended");
         uint cost = royalty.cost;
         require(nftRoyaltyState == NftRoyaltyState.OPEN);
         require(msg.value >= cost * _mintAmount, "Insufficient funds!");
         nftBalance[_holder] += _mintAmount;
         PicardyNftBase(nftRoyaltyAddress).buyRoyalty(_mintAmount, _holder);
+        if(msg.value > cost * _mintAmount) {
+        (bool os, ) = payable(msg.sender).call{value: msg.value - cost * _mintAmount}("");
+        }
+
+        if (royalty.maxSupply == PicardyNftBase(nftRoyaltyAddress).totalSupply()) {
+            hasEnded = true;
+            nftRoyaltyState = NftRoyaltyState.CLOSED;
+        }
         emit RoyaltySold(_mintAmount, _holder); 
     }
 
@@ -165,6 +175,7 @@ contract NftRoyaltySaleV3 is ReentrancyGuard, Pausable {
     /// @param tokenAddress address of the ERC20 token
     /// @dev this function can only be called by the contract owner or payMaster contract
     function updateRoyalty(uint256 _amount, address tokenAddress) external {
+        require(hasEnded, "already ended");
         require(nftRoyaltyState == NftRoyaltyState.CLOSED, "royalty sale still open");
         require (msg.sender == getUpdateRoyaltyCaller(), "updateRoyalty: Un-auth");
         uint saleCount = PicardyNftBase(nftRoyaltyAddress).getSaleCount();
@@ -189,11 +200,19 @@ contract NftRoyaltySaleV3 is ReentrancyGuard, Pausable {
 
     /// @notice This function changes the state of the royalty sale and should only be called by the owner
     function toggleRoyaltySale() external onlyOwner {
+        require(hasEnded == false, "already ended");
         if(nftRoyaltyState == NftRoyaltyState.OPEN){
             nftRoyaltyState = NftRoyaltyState.CLOSED;
         }else{
             nftRoyaltyState = NftRoyaltyState.OPEN;
         }
+    }
+
+    /// @notice This function changes the state of the royalty sale to closed and should only be called by the owner, and can only be called once
+    function endRoyaltySale() external onlyOwner {
+        require(hasEnded == false, "endRoyaltySale: already ended");
+        nftRoyaltyState = NftRoyaltyState.CLOSED;
+        hasEnded = true;
     }
 
     /// @notice his function is used to pause the ERC721 token base contract
@@ -226,8 +245,9 @@ contract NftRoyaltySaleV3 is ReentrancyGuard, Pausable {
     /// @notice This function is used to withdraw the funds from the royalty sale contract and should only be called by the owner
     function withdraw() external onlyOwner { 
         require(ownerWithdrawn == false, "funds already withdrawn");
+        require(hasEnded == true, "not Ended");
         require(nftRoyaltyState == NftRoyaltyState.CLOSED, "royalty sale still open");
-        (address royaltyAddress, uint royaltyPercentage) = INftRoyaltySaleFactoryV2(royalty.factoryAddress).getRoyaltyDetails();
+        (address royaltyAddress, uint royaltyPercentage) = INftRoyaltySaleFactoryV3(royalty.factoryAddress).getRoyaltyDetails();
          uint balance = address(this).balance;
          uint royaltyPercentageTobips = royaltyPercentage * 100;
          uint txFee = (balance * royaltyPercentageTobips) / 10000;
@@ -244,6 +264,7 @@ contract NftRoyaltySaleV3 is ReentrancyGuard, Pausable {
     /// @param _amount amount of royalty token to be withdrawn
     /// @param _holder address of the royalty token holder
     function withdrawRoyalty(uint _amount, address _holder) external nonReentrant {
+        require(hasEnded == true, "not ended");
         require(nftRoyaltyState == NftRoyaltyState.CLOSED, "royalty sale still open");
         require(address(this).balance >= _amount, "Insufficient funds");
         require(royaltyBalance[_holder] >= _amount, "Insufficient balance");
@@ -257,6 +278,7 @@ contract NftRoyaltySaleV3 is ReentrancyGuard, Pausable {
     /// @param _amount amount of royalty token to be withdrawn
     /// @param _holder address of the royalty token holder
     function withdrawERC20Royalty(uint _amount, address _holder, address _tokenAddress) external nonReentrant {
+        require(hasEnded == true, "not ended");
         require(nftRoyaltyState == NftRoyaltyState.CLOSED, "royalty sale still open"); 
         require(IERC20(_tokenAddress).balanceOf(address(this)) >= _amount, "low balance");
         require(ercRoyaltyBalance[_holder][_tokenAddress] >= _amount, "Insufficient royalty balance");

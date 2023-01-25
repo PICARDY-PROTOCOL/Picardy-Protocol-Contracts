@@ -6,7 +6,7 @@ pragma solidity ^0.8.9;
 import {LinkTokenInterface} from "@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol";
 import {IPicardyNftRoyaltySaleV3} from "../ProductsV3/NftRoyaltySaleV3.sol";
 import {IPicardyTokenRoyaltySaleV3} from "../ProductsV3/TokenRoyaltySaleV3.sol";
-import {IPayMaster} from "../../V2/AutomationV2/PayMasterV2.sol";
+import {IPayMaster} from "../AutomationV3/PayMasterV3.sol";
 import {IRoyaltyAdapterV3} from "./RoyaltyAdapterV3.sol";
 import {IPicardyHub} from "../../PicardyHub.sol";
 
@@ -38,42 +38,24 @@ contract RoyaltyAutomationRegistrarV3 {
     }
 
     /// @notice details for registering a new automation
-    /// @param name the name of the automation (this would be used for upkeep and can be the same as the project name).
     /// @param ticker the ticker of that would be used to pay for the upkeep.
-    /// @param email the email of the person registering the automation.(this would be used to send a notification when your upkeep balane is low).
     /// @param jobId the job id of the job that would be used on the chainlink node (See Docs for more info).
     /// @param oracle the address of the Picardy oracle address (See Docs for more info).
     /// @param royaltyAddress the address of the royalty contract.
     /// @param adminAddress the address of the admin of the automation. This can also be the address of the royalty owner
     /// @param royaltyType the type of royalty contract (0 = NFT, 1 = Token).
     /// @param updateInterval the interval at which the automation would be updated.
-    /// @param gasLimit the gas limit of the upkeep(See Docs for more info).
     /// @param amount the amount of LINK to be sent to the upkeep contract.
     /// @dev The amount of link would be split and sent to chainlink for upkeep and picardy royalty adapter for oracle fees.
     struct RegistrationDetails {
-        string name;
         string ticker;
-        string email;
         string jobId;
         address oracle;
         address royaltyAddress;
         address adminAddress;
         uint royaltyType;
         uint updateInterval;
-        uint32 gasLimit;
         uint96 amount;
-    }
-
-    /// @notice details send to Chainlink for registering a new upkeep
-    struct PayloadDetails {
-        string name;
-        bytes encryptedEmail;
-        address royaltyAddress;
-        uint32 gasLimit;
-        address adminAddress; 
-        bytes checkData;
-        uint96 amount; 
-        uint8 source; 
     }
     
     address public link;
@@ -115,7 +97,7 @@ contract RoyaltyAutomationRegistrarV3 {
     /// @param details struct containing all the details for the registration
     /// @dev only callable by the royalty contract owner see (RegistrationDetails struct above for more info).
     function register(RegistrationDetails memory details) external {
-        require (details.updateInterval >= 1 minutes, "update interval too low");
+        require (details.updateInterval >= 1, "update interval too low");
         require (details.royaltyAddress != address(0), "invalid royalty address");
         require (details.adminAddress != address(0), "invalid admin address");
         require (details.oracle != address(0), "invalid oracle address");
@@ -128,7 +110,8 @@ contract RoyaltyAutomationRegistrarV3 {
             IPicardyNftRoyaltySaleV3 royalty = IPicardyNftRoyaltySaleV3(details.royaltyAddress);
             require(msg.sender == royalty.getOwner(), "Only owner can register automation");   
             royalty.setupAutomationV2(details.updateInterval, adapter, details.oracle, details.jobId);
-            IRoyaltyAdapterV3(adapter).addValidSaleAddress(details.royaltyAddress, details.royaltyType, details.updateInterval, details.oracle, details.jobId);
+            i_link.transferFrom(msg.sender, adapter, details.amount);
+            IRoyaltyAdapterV3(adapter).addValidSaleAddress(details.royaltyAddress, details.royaltyType, details.updateInterval, details.oracle, details.jobId, details.amount);
             i_payMaster.addRoyaltyData(
                 adapter, 
                 details.royaltyAddress, 
@@ -140,7 +123,7 @@ contract RoyaltyAutomationRegistrarV3 {
             IPicardyTokenRoyaltySaleV3 royalty = IPicardyTokenRoyaltySaleV3(details.royaltyAddress);
             require(msg.sender == royalty.getOwner(), "Only owner can register automation");
             royalty.setupAutomationV2(details.updateInterval, adapter, details.oracle, details.jobId);
-            IRoyaltyAdapterV3(adapter).addValidSaleAddress(details.royaltyAddress, details.royaltyType, details.updateInterval, details.oracle, details.jobId);
+            IRoyaltyAdapterV3(adapter).addValidSaleAddress(details.royaltyAddress, details.royaltyType, details.updateInterval, details.oracle, details.jobId, details.amount);
             i_payMaster.addRoyaltyData(
                 adapter, 
                 details.royaltyAddress, 
@@ -148,24 +131,10 @@ contract RoyaltyAutomationRegistrarV3 {
                 details.ticker
             );
         }
-        fundAdapter(details.amount, details.royaltyAddress);
         RegisteredDetails memory i_registeredDetails = RegisteredDetails( details.royaltyAddress, adapter, details.adminAddress, details.royaltyType);
         registeredDetails[details.royaltyAddress] = i_registeredDetails;
         hasReg[details.royaltyAddress] = true;
         emit AutomationRegistered(details.royaltyAddress);   
-    }
-
-    /// @notice funds oracle fee balance on picardy royalty adapter
-    /// @param _amount amount of link to fund
-    /// @param _royaltyAddress address of the royalty contract
-    function fundAdapterBalance(uint96 _amount, address _royaltyAddress) external {
-        fundAdapter(_amount, _royaltyAddress);
-    }
-
-    /// @notice Internal function with extra data to fund adapter
-    function fundAdapter(uint96 _amount, address _royaltyAddress) internal {
-        require(i_link.balanceOf(msg.sender)>= _amount, "Low Balance");
-        i_link.transferAndCall(adapter, _amount, abi.encode(_amount, _royaltyAddress, address(this)));
     }
 
     /// @notice pauses automation can also be on the royalty contract
@@ -189,7 +158,7 @@ contract RoyaltyAutomationRegistrarV3 {
 
     /// @notice cancels automation
     /// @param _royaltyAddress address of the royalty contract
-    function cancleAutomation(address _royaltyAddress) external {
+    function cancelAutomation(address _royaltyAddress) external {
         require(_royaltyAddress != address(0), "invalid royalty address");
         require(hasReg[_royaltyAddress] == true, "not registered");
         RegisteredDetails memory i_registeredDetails = registeredDetails[_royaltyAddress];
@@ -243,34 +212,17 @@ contract RoyaltyAutomationRegistrarV3 {
     function getRegisteredDetails(address _royaltyAddress) external view returns(RegisteredDetails memory) {
         return registeredDetails[_royaltyAddress];
     }
-
-    function _getPayload(PayloadDetails memory payloadDetails) internal view returns(bytes memory){
-        bytes memory payload = abi.encode(
-            payloadDetails.name, 
-            payloadDetails.encryptedEmail, 
-            payloadDetails.royaltyAddress, 
-            payloadDetails.gasLimit, 
-            payloadDetails.adminAddress, 
-            payloadDetails.checkData, 
-            payloadDetails.amount, 
-            payloadDetails.source, 
-            address(this)
-        );
-
-        return payload;
-    }
 }
 
 interface IRoyaltyAutomationRegistrarV3 {
     struct RegistrationDetails {
-        string name;
         string ticker;
-        string email;
+        string jobId;
+        address oracle;
         address royaltyAddress;
         address adminAddress;
         uint royaltyType;
         uint updateInterval;
-        uint32 gasLimit;
         uint96 amount;
     }
 

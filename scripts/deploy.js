@@ -18,37 +18,35 @@ async function main() {
   let addresses;
   // change for testnet and mainnet deployment,
   const linkToken = "0x326C977E6efc84E512bB9C30f76E30c160eD06FB";
-  const registry = "0x02777053d6764996e594c3E88AF1D58D5363a2e6"; // change this for testnet or mainnet deployment
-  const registrar = "0xDb8e8e2ccb5C033938736aa89Fe4fa1eDfD15a1d"; // change this for testnet or mainnet deployment
   //Import comtracts
   const PicardyHub = await hre.ethers.getContractFactory("PicardyHub");
 
-  const PayMaster = await hre.ethers.getContractFactory("PayMasterV2");
+  const PayMaster = await hre.ethers.getContractFactory("PayMasterV3");
 
   const RoyaltyAutomationRegistrar = await hre.ethers.getContractFactory(
-    "RoyaltyAutomationRegistrarV2"
+    "RoyaltyAutomationRegistrarV3"
   );
 
   const RoyaltyAdapter = await hre.ethers.getContractFactory(
-    "RoyaltyAdapterV2"
+    "RoyaltyAdapterV3"
   );
 
   const NftRoyaltySaleImpl = await hre.ethers.getContractFactory(
-    "NftRoyaltySaleV2"
+    "NftRoyaltySaleV3"
   );
 
   const TokenRoyaltySaleImpl = await hre.ethers.getContractFactory(
-    "TokenRoyaltySaleV2"
+    "TokenRoyaltySaleV3"
   );
 
   const ArtisteTokenFactory = await hre.ethers.getContractFactory(
     "ArtisteTokenFactory"
   );
   const NftRoyaltySaleFactory = await hre.ethers.getContractFactory(
-    "NftRoyaltySaleFactoryV2"
+    "NftRoyaltySaleFactoryV3"
   );
   const TokenRoyaltySaleFactory = await hre.ethers.getContractFactory(
-    "TokenRoyaltySaleFactoryV2"
+    "TokenRoyaltySaleFactoryV3"
   );
 
   //Deploy Implimentation contracts
@@ -81,8 +79,6 @@ async function main() {
 
   const royaltyAutomationRegistrar = await RoyaltyAutomationRegistrar.deploy(
     linkToken,
-    registrar,
-    registry,
     royaltyAdapterAddress,
     picardyHubAddress,
     payMasterAddress

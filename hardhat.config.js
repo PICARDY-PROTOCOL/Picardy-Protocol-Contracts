@@ -4,7 +4,7 @@ require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-etherscan");
 //require("hardhat-contract-sizer");
 require("@nomiclabs/hardhat-waffle");
-require("hardhat-gas-reporter");
+//require("hardhat-gas-reporter");
 require("solidity-docgen");
 //require("@openzeppelin/hardhat-upgrades");
 
@@ -75,13 +75,13 @@ module.exports = {
     ],
   },
 
-  // contractSizer: {
-  //   alphaSort: true,
-  //   disambiguatePaths: false,
-  //   runOnCompile: true,
-  //   strict: true,
-  //   only: [],
-  // },
+  contractSizer: {
+    alphaSort: true,
+    disambiguatePaths: false,
+    runOnCompile: true,
+    strict: true,
+    only: [],
+  },
 
   gasReporter: {
     currency: "USD",

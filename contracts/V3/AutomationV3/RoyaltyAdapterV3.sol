@@ -6,26 +6,24 @@ pragma solidity ^0.8.7;
 import "@chainlink/contracts/src/v0.8/ChainlinkClient.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/ERC677ReceiverInterface.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol";
 import "@chainlink/contracts/src/v0.8/AutomationCompatible.sol";
 import {IPicardyNftRoyaltySaleV3} from "../ProductsV3/NftRoyaltySaleV3.sol";
-import {IPayMaster} from "../../V2/AutomationV2/PayMasterV2.sol";
+import {IPayMaster} from "../AutomationV3/PayMasterV3.sol";
 import {IPicardyTokenRoyaltySaleV3} from "../ProductsV3/TokenRoyaltySaleV3.sol";
 import {IPicardyHub} from "../../PicardyHub.sol";
 import {IRoyaltyAutomationRegistrarV3} from "../AutomationV3/RoyaltyAutomationRegV3.sol";
 
 
-contract RoyaltyAdapterV3 is ChainlinkClient, ERC677ReceiverInterface, AutomationCompatibleInterface {
+contract RoyaltyAdapterV3 is ChainlinkClient, AutomationCompatibleInterface {
     using Chainlink for Chainlink.Request;
     using Strings for uint256;
 
-    error OnlyLink();
-
-    event RoyaltyData(bytes32 indexed requestId, uint indexed value, address indexed royaltySaleAddress);
+    event RoyaltyData(bytes32 indexed requestId, uint indexed value, uint indexed royaltyAutomationId);
     event UpkeepPerformed(uint indexed time);
 
     uint256 private ORACLE_PAYMENT = 1 * LINK_DIVISIBILITY / 10; // 1.0  * 10**18
+    uint256 private KEEPERS_FEE = 1 * LINK_DIVISIBILITY / 10; // 1.0  * 10**18
     address payMaster;
     address public picardyReg;
     address public picardyHub;
@@ -37,23 +35,20 @@ contract RoyaltyAdapterV3 is ChainlinkClient, ERC677ReceiverInterface, Automatio
        uint royaltyType;
        uint updateInterval;
        string jobId;
+       uint royaltyAutomationId;
     }
 
     mapping(address => bool) public saleExists;
     mapping(address => uint) public linkBalance;
     mapping (address => AutomationDetails) public automationDetails;
+    mapping (uint => AutomationDetails) public idToAutomationDetails;
     address[] registeredAddresses;
+
+    uint royaltyAutomationId = 1;
 
 
     LinkTokenInterface immutable LINK;
     IRoyaltyAutomationRegistrarV3 i_royaltyReg;
-
-   modifier onlyLINK() {
-    if (msg.sender != address(LINK)) {
-      revert OnlyLink();
-    }
-    _;
-  }
     constructor(address _linkToken, address _payMaster, address _picardyHub) {
         require(IPicardyHub(_picardyHub).checkHubAdmin(msg.sender) == true, "addAdapterDetails: not hubAdmin");
         payMaster = _payMaster;
@@ -75,7 +70,7 @@ contract RoyaltyAdapterV3 is ChainlinkClient, ERC677ReceiverInterface, Automatio
     /// @notice this function is called on registration of automation
     /// @param royaltySaleAddress The address of the royalty sale contract
     /// @dev this function should only be called by the picardy automation Registrar
-    function addValidSaleAddress(address royaltySaleAddress, uint royaltyType, uint updateInterval, address oracle, string  calldata jobId) external {
+    function addValidSaleAddress(address royaltySaleAddress, uint royaltyType, uint updateInterval, address oracle, string  calldata jobId, uint amount) external {
         require(msg.sender == picardyReg, "addValidSaleAddress: not picardyReg");
         require(royaltySaleAddress != address(0), "addValidSaleAddress: royalty sale address cannot be address(0)");
         require(royaltyType == 0 || royaltyType == 1, "addValidSaleAddress: royalty type not valid");
@@ -86,9 +81,29 @@ contract RoyaltyAdapterV3 is ChainlinkClient, ERC677ReceiverInterface, Automatio
             oracle: oracle,
             royaltyType: royaltyType,
             updateInterval: updateInterval,
-            jobId: jobId});
+            jobId: jobId,
+            royaltyAutomationId: royaltyAutomationId});
+            linkBalance[royaltySaleAddress] = amount;
+
+        idToAutomationDetails[royaltyAutomationId] = AutomationDetails({
+            royaltyAddress: royaltySaleAddress,
+            oracle: oracle,
+            royaltyType: royaltyType,
+            updateInterval: updateInterval,
+            jobId: jobId,
+            royaltyAutomationId: royaltyAutomationId});
+
+        royaltyAutomationId++;
         registeredAddresses.push(royaltySaleAddress);
         saleExists[royaltySaleAddress] = true;
+    }
+
+    function getAddressById(uint _royaltyAutomationId) external view returns (address) {
+        return idToAutomationDetails[_royaltyAutomationId].royaltyAddress;
+    }
+
+    function getIdByAddress(address _royaltySaleAddress) external view returns (uint) {
+        return automationDetails[_royaltySaleAddress].royaltyAutomationId;
     }
 
     /// @notice this function is called to check the validity of the royalty sale address
@@ -110,10 +125,10 @@ contract RoyaltyAdapterV3 is ChainlinkClient, ERC677ReceiverInterface, Automatio
         require (_oracle != address(0), "requestRoyaltyAmount: oracle address cannot be address(0)");
         require (_royaltyType == 0 || _royaltyType == 1, "requestRoyaltyAmount: royalty type not valid");
         require (saleExists[_royaltySaleAddress] == true, "requestRoyaltyAmount: royalty sale registered");
-        require (msg.sender == _royaltySaleAddress , "requestRoyaltyAmount: Un-Auth");
         require (linkBalance[_royaltySaleAddress] >= ORACLE_PAYMENT, "requestRoyaltyAmount: Link balance low");
         if( _royaltyType == 0){
             require(IPicardyNftRoyaltySaleV3(_royaltySaleAddress).checkAutomation() == true, "royalty adapter: automation not enabled");
+             linkBalance[_royaltySaleAddress] -= ORACLE_PAYMENT;
             (,,,string memory _projectTitle,string memory _creatorName) = IPicardyNftRoyaltySaleV3(_royaltySaleAddress).getTokenDetails();
 
             Chainlink.Request memory req = buildOperatorRequest( stringToBytes32(_jobId), this.fulfillrequestRoyaltyAmount.selector);
@@ -123,6 +138,7 @@ contract RoyaltyAdapterV3 is ChainlinkClient, ERC677ReceiverInterface, Automatio
             sendOperatorRequestTo(_oracle, req, ORACLE_PAYMENT);
         }else if(_royaltyType == 1){
             require(IPicardyTokenRoyaltySaleV3(_royaltySaleAddress).checkAutomation() == true, "royalty adapter: automation not enabled");
+             linkBalance[_royaltySaleAddress] -= ORACLE_PAYMENT;
             (string memory _projectTitle,string memory _creatorName) = IPicardyTokenRoyaltySaleV3(_royaltySaleAddress).getTokenDetails();
             
             Chainlink.Request memory req = buildOperatorRequest( stringToBytes32(_jobId), this.fulfillrequestRoyaltyAmount.selector);
@@ -136,24 +152,15 @@ contract RoyaltyAdapterV3 is ChainlinkClient, ERC677ReceiverInterface, Automatio
     ///@notice this function is called by the oracle to fulfill the request and send the royalty amount to the paymaster
     ///@param _requestId The request id from the node.
     ///@param amount The amount of royalty to be sent to the paymaster
-    ///@param _royaltySaleAddress The address of the royalty sale contract
+    ///@param _royaltyAutomationId the id to the royalty sale contract
     ///@dev this function should only be called by the oracle 
-    function fulfillrequestRoyaltyAmount(bytes32 _requestId, uint256 amount, address _royaltySaleAddress) public recordChainlinkFulfillment(_requestId) {
-        emit RoyaltyData(_requestId, amount, _royaltySaleAddress);
+    function fulfillrequestRoyaltyAmount(bytes32 _requestId, uint256 amount, uint  _royaltyAutomationId) public recordChainlinkFulfillment(_requestId) {
+        emit RoyaltyData(_requestId, amount, _royaltyAutomationId);
+
+        address _royaltySaleAddress = idToAutomationDetails[_royaltyAutomationId].royaltyAddress;
         string memory ticker = IRoyaltyAutomationRegistrarV3(picardyReg).getRoyaltyTicker(_royaltySaleAddress);
         (bool success) = IPayMaster(payMaster).sendPayment(_royaltySaleAddress, ticker,  amount);  
         require(success == true, "fulfillrequestRoyaltyAmount: payment failed");
-    }
-
-    /// @notice this is an implimentation of the ERC677 callback function for LINK token
-    /// @param _sender The address of the sender. This should be the picardy automation registrar.
-    /// @param _amount The amount of LINK sent.
-    /// @param _data The data sent with the transaction.
-    /// @dev this function should only be called by the LINK token contract
-    function onTokenTransfer(address _sender, uint256 _amount, bytes calldata _data) external override onlyLINK {
-        require (_sender == picardyReg, "Not reg address");
-        (, address _royaltySaleAddress,) = abi.decode( _data, ( uint96, address, address));
-        linkBalance[_royaltySaleAddress] += _amount;
     }
 
     /// @notice this function gets the link token balance of the royalty sale contract
@@ -161,6 +168,12 @@ contract RoyaltyAdapterV3 is ChainlinkClient, ERC677ReceiverInterface, Automatio
     function getRoyaltyLinkBalance(address _royaltySaleAddress) external view returns(uint){
         return linkBalance[_royaltySaleAddress];
     } 
+
+    function fundLinkBalance(address _royaltySaleAddress, uint _amount) external {
+        LinkTokenInterface i_link = LinkTokenInterface(linkAddress);
+        i_link.transferFrom(msg.sender, address(this), _amount);
+        linkBalance[_royaltySaleAddress] += _amount;
+    }
 
     /// @notice this function is called to get the picardy automation registrar address
     function getPicardyReg() external view returns(address){
@@ -198,7 +211,7 @@ contract RoyaltyAdapterV3 is ChainlinkClient, ERC677ReceiverInterface, Automatio
     ///@param _royaltyAddress The address of the royalty contract
     ///@dev this function should only be called by the royalty admin
     function adminWithdrawLink(address _royaltyAddress) external {
-        require (linkBalance[_royaltyAddress] > 0, "adminWithdrawLink: no link balance");
+        require (linkBalance[_royaltyAddress] != 0, "adminWithdrawLink: no link balance");
         require (msg.sender == i_royaltyReg.getAdminAddress(_royaltyAddress), "adminWithdrawLink: Un-Auth");
         require (LINK.balanceOf(address(this)) >= linkBalance[_royaltyAddress], "adminWithdrawLink: contract balance low");
         (bool success) = LINK.transfer(msg.sender, linkBalance[_royaltyAddress]);
@@ -216,6 +229,16 @@ contract RoyaltyAdapterV3 is ChainlinkClient, ERC677ReceiverInterface, Automatio
     function updateOraclePayment(uint256 _newPayment) external {
         require(IPicardyHub(picardyHub).checkHubAdmin(msg.sender) == true, "royalty adapter: Un-Auth");
         ORACLE_PAYMENT = _newPayment;
+    }
+
+    function updateRoyaltyOracle(address _royaltyAddress, address _newOracle) external {
+         require (msg.sender == i_royaltyReg.getAdminAddress(_royaltyAddress), "updateRoyaltyOracle: Un-Auth");
+        automationDetails[_royaltyAddress].oracle = _newOracle;
+    }
+
+    function updateRoyaltyJobId(address _royaltyAddress, string memory _newJobId) external {
+         require (msg.sender == i_royaltyReg.getAdminAddress(_royaltyAddress), "updateRoyaltyJobId: Un-Auth");
+        automationDetails[_royaltyAddress].jobId = _newJobId;
     }
 
     function cancelRequest( bytes32 _requestId, uint256 _payment, bytes4 _callbackFunctionId, uint256 _expiration) public {
@@ -238,13 +261,15 @@ contract RoyaltyAdapterV3 is ChainlinkClient, ERC677ReceiverInterface, Automatio
     /// @notice This function is used by chainlink keepers to check if the requirements for upkeep are met
     /// @dev this function can only be called by chainlink keepers
     function checkUpkeep(bytes calldata) external view override returns (bool upkeepNeeded, bytes memory performData){   
+        
+        address[] memory needsUpkeep = new address[](registeredAddresses.length);
+        uint validCount = 0;
+        
         for(uint i = 0; i < registeredAddresses.length; i++){
             require(registeredAddresses[i] != address(0), "royalty adapter: address not registered");
             address _royaltyAddress = registeredAddresses[i];
             AutomationDetails memory _automationDetails = automationDetails[_royaltyAddress];
             require(_automationDetails.royaltyType == 0 || _automationDetails.royaltyType == 1, "royalty adapter: invalid royalty type");
-            address[] memory needsUpkeep = new address[](registeredAddresses.length);
-            uint validCount = 0;
             if(_automationDetails.royaltyType == 0){
                IPicardyNftRoyaltySaleV3 _nftRoyaltySale = IPicardyNftRoyaltySaleV3(_royaltyAddress);
                 require(_nftRoyaltySale.checkRoyaltyState() == false, "royalty sale open");
@@ -264,10 +289,12 @@ contract RoyaltyAdapterV3 is ChainlinkClient, ERC677ReceiverInterface, Automatio
                     validCount++;
                 }
             }
-            if (validCount != 0){
-                performData = abi.encode(needsUpkeep);
-                upkeepNeeded = true;
-            }
+        }
+
+        if (validCount != 0){
+        uint cost = KEEPERS_FEE / validCount;
+        performData = abi.encode(needsUpkeep, cost);
+        upkeepNeeded = true;
         }
         
         return (upkeepNeeded, performData);
@@ -276,10 +303,11 @@ contract RoyaltyAdapterV3 is ChainlinkClient, ERC677ReceiverInterface, Automatio
     /// @notice This function is used by chainlink keepers to perform upkeep if checkUpkeep() returns true
     /// @dev this function can be called by anyone. checkUpkeep() parameters again to avoid unautorized call.
     function performUpkeep( bytes calldata performData) external override {
-        address[] memory _royaltyAddresses = abi.decode(performData, (address[]));
+        (address[] memory _royaltyAddresses, uint cost) = abi.decode(performData, (address[], uint));
         for (uint i = 0; i < _royaltyAddresses.length; i++) {
             address _royaltyAddress = _royaltyAddresses[i];
             require(_royaltyAddress != address(0), "royalty adapter: address not registered");
+            require(linkBalance[_royaltyAddress] >= ORACLE_PAYMENT + KEEPERS_FEE, "royalty adapter: royalty Link Balance low");
             AutomationDetails memory _automationDetails = automationDetails[_royaltyAddress];
             if(_automationDetails.royaltyType == 0){
                 IPicardyNftRoyaltySaleV3 _nftRoyaltySale = IPicardyNftRoyaltySaleV3(_royaltyAddress);
@@ -287,6 +315,7 @@ contract RoyaltyAdapterV3 is ChainlinkClient, ERC677ReceiverInterface, Automatio
                 require(_nftRoyaltySale.checkAutomation() == true, "automation not started");
                 bool _check = (_nftRoyaltySale.getLastRoyaltyUpdate() + _automationDetails.updateInterval) >= block.timestamp;
                 if (_check == true){
+                    linkBalance[_royaltyAddress] -= cost;
                     requestRoyaltyAmount(_royaltyAddress, _automationDetails.oracle, _automationDetails.royaltyType, _automationDetails.jobId);
                     emit UpkeepPerformed(block.timestamp);
                 }
@@ -296,6 +325,7 @@ contract RoyaltyAdapterV3 is ChainlinkClient, ERC677ReceiverInterface, Automatio
                 require(_tokenRoyaltySale.checkAutomation() == true, "automation not started");
                 bool _check = (_tokenRoyaltySale.getLastRoyaltyUpdate() + _automationDetails.updateInterval) >= block.timestamp;
                 if (_check == true){
+                    linkBalance[_royaltyAddress] -= cost;
                     requestRoyaltyAmount(_royaltyAddress, _automationDetails.oracle, _automationDetails.royaltyType, _automationDetails.jobId);
                     emit UpkeepPerformed(block.timestamp);
                 }
@@ -312,7 +342,7 @@ interface IRoyaltyAdapterV3{
     function checkIsValidSaleAddress(address _royaltySaleAddress) external view returns (bool);	
     function getPicardyReg() external view returns(address);
     function getPayMaster() external view returns(address);
-    function addValidSaleAddress(address _royaltySaleAddress, uint _royaltyType, uint _updateIntervals, address _oracle, string calldata _jobId) external;
+    function addValidSaleAddress(address _royaltySaleAddress, uint _royaltyType, uint _updateIntervals, address _oracle, string calldata _jobId, uint amount) external;
     function getRoyaltyLinkBalance(address _royaltySaleAddress) external view returns(uint);
     function adminWithdrawLink(address _royaltyAddress) external;
     function withdrawBalance() external;
