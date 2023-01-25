@@ -18,47 +18,37 @@ async function main() {
   let addresses;
   // change for testnet and mainnet deployment,
   const linkToken = "0x326C977E6efc84E512bB9C30f76E30c160eD06FB";
-  const jobId = "42b90f5bf8b940029fed6330f7036f01";
-  const oracleAddress = "0x7E0ffaca8352CbB93c099C08b9aD7B4bE9f790Ec";
-  const registry = "0x7E0ffaca8352CbB93c099C08b9aD7B4bE9f790Ec"; // change this for testnet or mainnet deployment
-  const registrar = "0x7E0ffaca8352CbB93c099C08b9aD7B4bE9f790Ec"; // change this for testnet or mainnet deployment
+  const registry = "0x02777053d6764996e594c3E88AF1D58D5363a2e6"; // change this for testnet or mainnet deployment
+  const registrar = "0xDb8e8e2ccb5C033938736aa89Fe4fa1eDfD15a1d"; // change this for testnet or mainnet deployment
   //Import comtracts
   const PicardyHub = await hre.ethers.getContractFactory("PicardyHub");
 
-  const RoyaltyAdapterFactory = await hre.ethers.getContractFactory(
-    "RoyaltyAdapterFactory"
-  );
-
-  const PayMaster = await hre.ethers.getContractFactory("PayMaster");
+  const PayMaster = await hre.ethers.getContractFactory("PayMasterV2");
 
   const RoyaltyAutomationRegistrar = await hre.ethers.getContractFactory(
-    "RoyaltyAutomationRegistrar"
+    "RoyaltyAutomationRegistrarV2"
   );
 
-  const NftRoyaltyAdapterImp = await hre.ethers.getContractFactory(
-    "RoyaltyAdapter"
-  );
-
-  const TokenRoyaltyAdapterImp = await hre.ethers.getContractFactory(
-    "TokenRoyaltyAdapter"
+  const RoyaltyAdapter = await hre.ethers.getContractFactory(
+    "RoyaltyAdapterV2"
   );
 
   const NftRoyaltySaleImpl = await hre.ethers.getContractFactory(
-    "NftRoyaltySale"
+    "NftRoyaltySaleV2"
   );
 
   const TokenRoyaltySaleImpl = await hre.ethers.getContractFactory(
-    "TokenRoyaltySale"
+    "TokenRoyaltySaleV2"
   );
 
   const ArtisteTokenFactory = await hre.ethers.getContractFactory(
     "ArtisteTokenFactory"
   );
   const NftRoyaltySaleFactory = await hre.ethers.getContractFactory(
-    "NftRoyaltySaleFactory"
+    "NftRoyaltySaleFactoryV2"
   );
   const TokenRoyaltySaleFactory = await hre.ethers.getContractFactory(
-    "TokenRoyaltySaleFactory"
+    "TokenRoyaltySaleFactoryV2"
   );
 
   //Deploy Implimentation contracts
@@ -71,14 +61,6 @@ async function main() {
   await tokenRoyaltyImp.deployed();
   const tokenRoyaltyImpAddress = tokenRoyaltyImp.address;
 
-  const nftRoyaltyAdapterImp = await NftRoyaltyAdapterImp.deploy();
-  await nftRoyaltyAdapterImp.deployed();
-  const nftRoyaltyAdapterImpAddr = nftRoyaltyAdapterImp.address;
-
-  const tokenRoyaltyAdapterImp = await TokenRoyaltyAdapterImp.deploy();
-  await tokenRoyaltyAdapterImp.deployed();
-  const tokenRoyaltyAdapterImpAddr = tokenRoyaltyAdapterImp.address;
-
   //Deploy contracts
 
   const picardyHub = await PicardyHub.deploy();
@@ -89,32 +71,28 @@ async function main() {
   await payMaster.deployed();
   const payMasterAddress = payMaster.address;
 
-  const royaltyAdapterFactory = await RoyaltyAdapterFactory.deploy(
-    picardyHubAddress,
+  const royaltyAdapter = await RoyaltyAdapter.deploy(
     linkToken,
-    oracleAddress,
-    jobId,
-    nftRoyaltyAdapterImpAddr,
-    tokenRoyaltyAdapterImpAddr,
-    payMasterAddress
+    payMasterAddress,
+    picardyHubAddress
   );
-  await royaltyAdapterFactory.deployed();
-  const royaltyAdapterFactoryAddress = royaltyAdapterFactory.address;
+  await royaltyAdapter.deployed();
+  const royaltyAdapterAddress = royaltyAdapter.address;
 
   const royaltyAutomationRegistrar = await RoyaltyAutomationRegistrar.deploy(
     linkToken,
     registrar,
     registry,
-    royaltyAdapterFactoryAddress,
+    royaltyAdapterAddress,
     picardyHubAddress,
     payMasterAddress
   );
   await royaltyAutomationRegistrar.deployed();
   const royaltyAutomationRegistrarAddress = royaltyAutomationRegistrar.address;
 
-  //Initilize the royaltyAutomationRegistrar in paymaster and Royalty adapter factory
+  //Initilize the royaltyAutomationRegistrar in paymaster and Royalty adapter
   await payMaster.addRegAddress(royaltyAutomationRegistrarAddress);
-  await royaltyAdapterFactory.addPicardyReg(royaltyAutomationRegistrarAddress);
+  await royaltyAdapter.addPicardyReg(royaltyAutomationRegistrarAddress);
 
   // Deploy Product Factory
 
@@ -147,15 +125,13 @@ async function main() {
     artisteTokenFactory: artisteTokenFactoryAddress,
     nftRoyaltySaleFactory: nftRoyaltySaleFactoryAddress,
     tokenRoyaltySaleFactory: tokenRoyaltySaleFactoryAddress,
-    royaltyAdapterFactory: royaltyAdapterFactoryAddress,
+    royaltyAdapter: royaltyAdapterAddress,
     payMasterAddress: payMasterAddress,
     automationRegistrarAddress: royaltyAutomationRegistrarAddress,
 
     implimentations: {
-      nftRoyaltySale: nftRoyaltyAdapterImpAddr,
-      tokenRoyaltySale: tokenRoyaltyAdapterImpAddr,
-      nftRoyaltyAdapter: nftRoyaltyAdapterImpAddr,
-      tokenRoyaltyAdapter: tokenRoyaltyAdapterImpAddr,
+      nftRoyaltySale: nftRoyaltyImpAddress,
+      tokenRoyaltySale: tokenRoyaltyImpAddress,
     },
   };
 
@@ -169,11 +145,9 @@ async function main() {
     artisteTokenFactory: artisteTokenFactoryAddress,
     nftRoyaltySaleFactory: nftRoyaltySaleFactoryAddress,
     tokenRoyaltySaleFactory: tokenRoyaltySaleFactoryAddress,
-    royaltyAdapterFactory: royaltyAdapterFactoryAddress,
-    nftRoyaltySaleImp: nftRoyaltyAdapterImpAddr,
-    tokenRoyaltySaleImp: tokenRoyaltyAdapterImpAddr,
-    nftRoyaltyAdapterImp: nftRoyaltyAdapterImpAddr,
-    tokenRoyaltyAdapterImp: tokenRoyaltyAdapterImpAddr,
+    royaltyAdapter: royaltyAdapterAddress,
+    nftRoyaltySaleImp: nftRoyaltyImpAddress,
+    tokenRoyaltySaleImp: tokenRoyaltyImpAddress,
   });
 }
 

@@ -180,10 +180,10 @@ describe("NftRoyaltySaleV2", function () {
       .buyRoyalty(2, user3.address, { value: updateAmount });
 
     await expect(
-      nftRoyaltySale.connect(user2).toggleRoyaltSale()
+      nftRoyaltySale.connect(user2).toggleRoyaltySale()
     ).to.be.rejectedWith(Error);
 
-    await nftRoyaltySale.toggleRoyaltSale();
+    await nftRoyaltySale.toggleRoyaltySale();
   });
   //it: owner can pause and unpause the base NFT contract
   it("owner can pause and unpause the base NFT contract", async () => {
@@ -225,7 +225,7 @@ describe("NftRoyaltySaleV2", function () {
     await expect(nftRoyaltySale.connect(user2).withdraw()).to.be.rejectedWith(
       Error
     );
-    await nftRoyaltySale.toggleRoyaltSale();
+    await nftRoyaltySale.toggleRoyaltySale();
     await nftRoyaltySale.withdraw();
   });
   //it royaltyHolders can withdraw
@@ -284,7 +284,7 @@ describe("NftRoyaltySaleV2", function () {
         )
     ).to.be.rejectedWith(Error);
 
-    await nftRoyaltySale.toggleRoyaltSale();
+    await nftRoyaltySale.toggleRoyaltySale();
 
     await user1.sendTransaction({
       to: nftRoyaltySale.address,
@@ -371,7 +371,7 @@ describe("NftRoyaltySaleV2", function () {
         )
     ).to.be.rejectedWith(Error);
 
-    await nftRoyaltySale.toggleRoyaltSale();
+    await nftRoyaltySale.toggleRoyaltySale();
     await payoutToken.connect(user2).mint(updateAmount, user2.address);
     await nftRoyaltySale.updateRoyalty(updateAmount, payoutToken.address);
 
